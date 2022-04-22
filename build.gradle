@@ -1,0 +1,31 @@
+plugins {
+    id 'application'
+}
+
+ext {
+   javaMainClass = "io.openliberty.explorer.Main"
+}
+
+tasks.named('wrapper') {
+    jarFile = rootProject.file('.gradle/gradle-wrapper.jar')
+}
+
+compileJava {
+    sourceCompatibility = '8'
+    targetCompatibility = '8'
+}
+
+application {
+    mainClassName = javaMainClass
+}
+
+group 'io.openliberty.tools'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileClasspath "org.jgrapht:jgrapht-core:1.5.1"
+}
