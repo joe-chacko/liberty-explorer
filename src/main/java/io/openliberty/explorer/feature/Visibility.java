@@ -13,10 +13,9 @@
 package io.openliberty.explorer.feature;
 
 import java.util.function.Predicate;
-import java.util.jar.Attributes;
 
 @SuppressWarnings("unused")
-enum Visibility implements Predicate<Attributes> {
+enum Visibility implements Predicate<Feature> {
     PUBLIC("@"),
     PROTECTED("~"),
     PRIVATE("-"),
@@ -32,12 +31,5 @@ enum Visibility implements Predicate<Attributes> {
         return String.format((tabs ? "%s" : "%-10s"), name().toLowerCase());
     }
 
-    public boolean test(Attributes feature) {
-        return this == Key.SUBSYSTEM_SYMBOLICNAME.parseValues(feature)
-                .findFirst()
-                .map(v -> v.getQualifier("visibility"))
-                .map(String::toUpperCase)
-                .map(Visibility::valueOf)
-                .orElse(Visibility.UNKNOWN);
-    }
+    public boolean test(Feature feature) { return this == feature.visibility(); }
 }

@@ -87,6 +87,7 @@ public class Catalog {
     public void doSomething() {
         dependencies.vertexSet()
                 .stream()
+                .filter(Visibility.PUBLIC)
                 .filter(f -> dependencies.inDegreeOf(f) == 0)
                 .sorted()
                 .forEach(System.out::println);
