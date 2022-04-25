@@ -22,9 +22,7 @@ public class Main {
         System.out.println("================================================================================");
         try {
             Catalog liberty = new Catalog(Paths.get("/Users/chackoj/wlp"));
-            System.out.println("================================================================================");
-            liberty.allFeatures().map(Feature::displayName).forEach(System.out::println);
-            System.out.println("================================================================================");
+            liberty.doSomething();
         } catch (Throwable t) {
             t.printStackTrace();
             System.out.println(t);

@@ -83,4 +83,12 @@ public class Catalog {
         dependencies(rootFeature).forEach(f -> dfs(f, action));
         action.accept(rootFeature);
     }
+
+    public void doSomething() {
+        dependencies.vertexSet()
+                .stream()
+                .filter(f -> dependencies.inDegreeOf(f) == 0)
+                .sorted()
+                .forEach(System.out::println);
+    }
 }
