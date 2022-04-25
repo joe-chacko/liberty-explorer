@@ -3,7 +3,6 @@
 BASE_DIR="$(dirname $(realpath "$0"))"
 SHELL_SCRIPT="$BASE_DIR/build/install/lx/bin/lx"
 
-
 # Use a subshell in the base dir just in case the project needs to be built
 (
     cd "$BASE_DIR"

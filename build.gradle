@@ -11,8 +11,8 @@ tasks.named('wrapper') {
 }
 
 compileJava {
-    sourceCompatibility = '8'
-    targetCompatibility = '8'
+    sourceCompatibility = '11'
+    targetCompatibility = '11'
 }
 
 application {
