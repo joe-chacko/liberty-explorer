@@ -25,6 +25,7 @@ import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static io.openliberty.explorer.feature.Key.IBM_PROVISION_CAPABILITY;
 import static io.openliberty.explorer.feature.Key.IBM_SHORTNAME;
 import static io.openliberty.explorer.feature.Key.SUBSYSTEM_CONTENT;
 import static io.openliberty.explorer.feature.Key.SUBSYSTEM_SYMBOLICNAME;
@@ -35,8 +36,8 @@ public final class Feature implements Comparable<Feature> {
     private final String shortName;
     private final String name;
     private final Visibility visibility;
-    private final boolean hasContent;
     private final List<String> containedFeatures;
+    private final boolean isAutoFeature;
 
     Feature(Path p) {
         final Attributes attributes;
@@ -52,26 +53,26 @@ public final class Feature implements Comparable<Feature> {
                 .map(v -> v.getQualifier("visibility"))
                 .map(String::toUpperCase)
                 .map(Visibility::valueOf)
-                .orElse(Visibility.DEFAULT);
+                .orElse(Visibility.UNKNOWN);
         this.name = visibility == PUBLIC ? shortName().orElse(fullName) : fullName;
-        this.hasContent = SUBSYSTEM_CONTENT.isPresent(attributes);
         this.containedFeatures = SUBSYSTEM_CONTENT.parseValues(attributes)
                 .filter(v -> "osgi.subsystem.feature".equals(v.getQualifier("type")))
                 .map(v -> v.id)
                 .collect(Collectors.toUnmodifiableList());
+        this.isAutoFeature = IBM_PROVISION_CAPABILITY.isPresent(attributes);
     }
 
     public String fullName() { return fullName; }
     public Optional<String> shortName() { return Optional.ofNullable(shortName); }
     public Visibility visibility() { return this.visibility; }
     public String name() { return name; }
-    public boolean hasContent() { return hasContent; }
     public Stream<String> containedFeatures() { return containedFeatures.stream(); }
-    public String displayName() { return visibility.indicator + name(); }
+    public String displayName() { return (isAutoFeature ? "&" : visibility.indicator) + name(); }
 
     @Override
     public int compareTo(Feature that) {
-        int result = this.visibility().compareTo(that.visibility());
+        int result = Boolean.compare(this.isAutoFeature, that.isAutoFeature);
+        if (0 == result) result = this.visibility().compareTo(that.visibility());
         if (0 == result) result = this.name().compareTo(that.name());
         return result;
     }
@@ -86,7 +87,8 @@ public final class Feature implements Comparable<Feature> {
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(fullName);
-    }
+    public int hashCode() { return Objects.hash(fullName); }
+
+    @Override
+    public String toString() { return displayName(); }
 }

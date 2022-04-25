@@ -20,7 +20,7 @@ enum Visibility implements Predicate<Attributes> {
     PUBLIC("@"),
     PROTECTED("~"),
     PRIVATE("-"),
-    DEFAULT("?");
+    UNKNOWN("?");
 
     final String indicator;
 
@@ -38,6 +38,6 @@ enum Visibility implements Predicate<Attributes> {
                 .map(v -> v.getQualifier("visibility"))
                 .map(String::toUpperCase)
                 .map(Visibility::valueOf)
-                .orElse(Visibility.DEFAULT);
+                .orElse(Visibility.UNKNOWN);
     }
 }
