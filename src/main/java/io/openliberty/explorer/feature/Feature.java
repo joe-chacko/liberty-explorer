@@ -69,6 +69,11 @@ public final class Feature implements Comparable<Feature> {
     public Stream<String> containedFeatures() { return containedFeatures.stream(); }
     public String displayName() { return (isAutoFeature ? "&" : visibility.indicator) + name(); }
 
+    public boolean matches(String pattern) {
+        if (null != shortName) if (shortName.matches(pattern)) return true;
+        return fullName.matches(pattern);
+    }
+
     @Override
     public int compareTo(Feature that) {
         int result = Boolean.compare(this.isAutoFeature, that.isAutoFeature);

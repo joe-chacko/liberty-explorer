@@ -13,21 +13,30 @@
 
 package io.openliberty.explorer.feature;
 
-import org.jgrapht.Graphs;
+import com.mxgraph.layout.mxStackLayout;
+import org.jgrapht.ext.JGraphXAdapter;
+import org.jgrapht.graph.AsSubgraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleDirectedGraph;
 
+import javax.imageio.ImageIO;
+import java.awt.Color;
+import java.io.File;
 import java.io.IOError;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import static com.mxgraph.util.mxCellRenderer.createBufferedImage;
+import static java.util.Arrays.stream;
+import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.toSet;
 import static org.jgrapht.Graphs.addEdgeWithVertices;
 
 public class Catalog {
@@ -36,7 +45,6 @@ public class Catalog {
     final Map<String, Feature> shortNames = new HashMap<>();
     final SimpleDirectedGraph<Feature, DefaultEdge> dependencies = new SimpleDirectedGraph<>(DefaultEdge.class);
     public Catalog(Path libertyRoot) {
-        boolean ignoreDuplicates = false;
         this.featureSubdir = libertyRoot.resolve("lib/features");
         // validate directories
         if (!Files.isDirectory(libertyRoot))
@@ -51,28 +59,20 @@ public class Catalog {
                     .map(Feature::new)
                     .forEach(f -> {
                         var oldValue = featureMap.put(f.fullName(), f);
-                        if (null != oldValue && !ignoreDuplicates)
+                        if (null != oldValue)
                             System.err.println("WARNING: duplicate symbolic name found: " + f.fullName());
                         f.shortName()
                                 .map(shortName -> shortNames.put(shortName, f))
-                                .filter(whatever -> !ignoreDuplicates)
                                 .ifPresent(shortName -> System.err.println("WARNING: duplicate short name found: " + shortName));
                     });
         } catch (IOException e) {
             throw new IOError(e);
         }
         // add the features and their dependencies to the graph
-        featureMap.values().stream()
-                .forEach(f1 -> {
-                    f1.containedFeatures()
-                            .map(featureMap::get)
-                            .filter(Objects::nonNull) // ignore unknown features TODO: try tolerated versions instead
-                            .forEach(f2 -> addEdgeWithVertices(dependencies, f1, f2));
-                });
-    }
-
-    public Stream<Feature> allFeatures() {
-        return dependencies.vertexSet().stream().sorted();
+        featureMap.values().forEach(f1 -> f1.containedFeatures()
+                .map(featureMap::get)
+                .filter(Objects::nonNull) // ignore unknown features TODO: try tolerated versions instead
+                .forEach(f2 -> addEdgeWithVertices(dependencies, f1, f2)));
     }
 
     public Stream<Feature> dependencies(Feature rootFeature) {
@@ -91,5 +91,38 @@ public class Catalog {
                 .filter(f -> dependencies.inDegreeOf(f) == 0)
                 .sorted()
                 .forEach(System.out::println);
+    }
+
+    public Stream<Feature> findFeature(String pattern) {
+        return dependencies.vertexSet().stream().filter(f -> f.matches(pattern));
+    }
+
+    public String generateSubgraph(String...patterns) {
+        // convert the patterns to the matching features (ignoring duplicates)
+        final Set<Feature> features = stream(patterns).flatMap(this::findFeature).collect(toSet());
+        // start with the initial set of features
+        Set<Feature> deps = features;
+        while (!deps.isEmpty()) {
+            deps = deps.stream()
+                    // find the next level dependencies
+                    .map(dependencies::outgoingEdgesOf)
+                    .flatMap(Set::stream)
+                    .map(dependencies::getEdgeTarget)
+                    // filter out any that we already know about
+                    .filter(not(features::contains))
+                    .collect(toSet());
+            features.addAll(deps);
+        }
+        var subgraph = new AsSubgraph<>(dependencies, features);
+        var adapter = new JGraphXAdapter<>(subgraph);
+        var layout = new mxStackLayout(adapter, false);
+        layout.execute(adapter.getDefaultParent());
+        var img = createBufferedImage(adapter, null, 2, Color.WHITE, true, null);
+        File file = new File("graph.png");
+        try {
+            ImageIO.write(img, "PNG", file);
+        } catch (IOException e) {
+            throw new IOError(e);
+        }
     }
 }

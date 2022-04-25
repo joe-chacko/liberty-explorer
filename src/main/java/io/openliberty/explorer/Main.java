@@ -22,7 +22,7 @@ public class Main {
         System.out.println("================================================================================");
         try {
             Catalog liberty = new Catalog(Paths.get("/Users/chackoj/wlp"));
-            liberty.doSomething();
+            liberty.generateSubgraph(".*iiop.*");
         } catch (Throwable t) {
             t.printStackTrace();
             System.out.println(t);
