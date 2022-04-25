@@ -13,16 +13,14 @@
 package io.openliberty.explorer;
 
 import io.openliberty.explorer.feature.Catalog;
-import io.openliberty.explorer.feature.Feature;
 
 import java.nio.file.Paths;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("================================================================================");
         try {
             Catalog liberty = new Catalog(Paths.get("/Users/chackoj/wlp"));
-            liberty.generateSubgraph(".*iiop.*");
+            System.out.println(liberty.generateSubgraph(".*iiop.*"));
         } catch (Throwable t) {
             t.printStackTrace();
             System.out.println(t);

@@ -13,17 +13,14 @@
 
 package io.openliberty.explorer.feature;
 
-import com.mxgraph.layout.mxStackLayout;
-import org.jgrapht.ext.JGraphXAdapter;
 import org.jgrapht.graph.AsSubgraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleDirectedGraph;
+import org.jgrapht.nio.dot.DOTExporter;
 
-import javax.imageio.ImageIO;
-import java.awt.Color;
-import java.io.File;
 import java.io.IOError;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -33,7 +30,6 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import static com.mxgraph.util.mxCellRenderer.createBufferedImage;
 import static java.util.Arrays.stream;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toSet;
@@ -114,15 +110,9 @@ public class Catalog {
             features.addAll(deps);
         }
         var subgraph = new AsSubgraph<>(dependencies, features);
-        var adapter = new JGraphXAdapter<>(subgraph);
-        var layout = new mxStackLayout(adapter, false);
-        layout.execute(adapter.getDefaultParent());
-        var img = createBufferedImage(adapter, null, 2, Color.WHITE, true, null);
-        File file = new File("graph.png");
-        try {
-            ImageIO.write(img, "PNG", file);
-        } catch (IOException e) {
-            throw new IOError(e);
-        }
+        var exporter = new DOTExporter<Feature, DefaultEdge>(f -> "\"" + f + '"');
+        var writer = new StringWriter();
+        exporter.exportGraph(subgraph, writer);
+        return writer.toString();
     }
 }
