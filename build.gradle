@@ -27,5 +27,5 @@ repositories {
 }
 
 dependencies {
-    compileClasspath "org.jgrapht:jgrapht-core:1.5.1"
+    implementation "org.jgrapht:jgrapht-core:1.5.1"
 }

@@ -13,33 +13,30 @@
 
 package io.openliberty.explorer.feature;
 
+import org.jgrapht.Graphs;
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.SimpleDirectedGraph;
+
 import java.io.IOError;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import java.util.Stack;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+
+import static org.jgrapht.Graphs.addEdgeWithVertices;
 
 public class Catalog {
     final Path featureSubdir;
     final Map<String, Feature> featureMap = new HashMap<>();
     final Map<String, Feature> shortNames = new HashMap<>();
-    final Feature[] features;
-    final Map<Feature, Integer> featureIndex = new HashMap<>();
-    final BitSet[] dependencyMatrix;
+    final SimpleDirectedGraph<Feature, DefaultEdge> dependencies = new SimpleDirectedGraph<>(DefaultEdge.class);
     public Catalog(Path libertyRoot) {
-        boolean ignoreDuplicates = true;
+        boolean ignoreDuplicates = false;
         this.featureSubdir = libertyRoot.resolve("lib/features");
         // validate directories
         if (!Files.isDirectory(libertyRoot))
@@ -64,39 +61,18 @@ public class Catalog {
         } catch (IOException e) {
             throw new IOError(e);
         }
-        // sort the features by full name
-        this.features = featureMap.values().stream().sorted().toArray(Feature[]::new);
-        // create a reverse look-up table for the array
-        for (int i = 0; i < features.length; i++) featureIndex.put(features[i], i);
-        // create an initially empty dependency matrix
-        this.dependencyMatrix = Stream.generate(() -> new BitSet(features.length)).limit(features.length).toArray(BitSet[]::new);
-        // add the dependencies
-        allFeatures()
-                .filter(Feature::hasContent)
-                .forEach(f -> {
-                    BitSet dependencies = dependencyMatrix[featureIndex.get(f)];
-                    f.containedFeatures()
+        // add the features and their dependencies to the graph
+        featureMap.values().stream()
+                .forEach(f1 -> {
+                    f1.containedFeatures()
                             .map(featureMap::get)
-                            .map(featureIndex::get)
                             .filter(Objects::nonNull) // ignore unknown features TODO: try tolerated versions instead
-                            .forEach(dependencies::set);
+                            .forEach(f2 -> addEdgeWithVertices(dependencies, f1, f2));
                 });
     }
 
-//    void warnMissingFeatures() {
-//        allFeatures()
-//                .filter(Key.SUBSYSTEM_CONTENT)
-//                .sorted(comparing(Main::fullName))
-//                .forEach(f -> Key.SUBSYSTEM_CONTENT.parseValues(f)
-//                        .filter(v -> "osgi.subsystem.feature".equals(v.getQualifier("type")))
-//                        .map(v -> v.id)
-//                        .filter(id -> !featureMap.containsKey(id))
-//                        .forEach(id -> System.err.printf("WARNING: feature '%s' depends on absent feature '%s'. " +
-//                                "This dependency will be ignored.%n", Main.fullName(f), id)));
-//    }
-
     public Stream<Feature> allFeatures() {
-        return Arrays.stream(features);
+        return dependencies.vertexSet().stream().sorted();
     }
 
     public Stream<Feature> dependencies(Feature rootFeature) {
