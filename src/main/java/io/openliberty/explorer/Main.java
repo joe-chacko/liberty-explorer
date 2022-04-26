@@ -13,6 +13,7 @@
 package io.openliberty.explorer;
 
 import io.openliberty.explorer.feature.Catalog;
+import io.openliberty.explorer.feature.Feature;
 
 import java.nio.file.Paths;
 
@@ -20,7 +21,8 @@ public class Main {
     public static void main(String[] args) {
         try {
             Catalog liberty = new Catalog(Paths.get("/Users/chackoj/wlp"));
-            System.out.println(liberty.generateSubgraph(".*iiop.*"));
+            System.out.println(liberty.generateSubgraph(".*JmsSecurity.*"));
+//            liberty.findFeature(".*").sorted().map(Feature::simpleName).forEach(System.out::println);
         } catch (Throwable t) {
             t.printStackTrace();
             System.out.println(t);

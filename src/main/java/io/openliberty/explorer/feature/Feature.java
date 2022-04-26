@@ -69,6 +69,12 @@ public final class Feature implements Comparable<Feature> {
     public Stream<String> containedFeatures() { return containedFeatures.stream(); }
     public String displayName() { return (isAutoFeature ? "&" : visibility.indicator) + name(); }
 
+    public String simpleName() {
+        return shortName().orElseGet(() -> fullName
+                .replaceFirst("^com.ibm.websphere.app(server|client).", "")
+                .replaceFirst("^io.openliberty.", ""));
+    }
+
     public boolean matches(String pattern) {
         if (null != shortName) if (shortName.matches(pattern)) return true;
         return fullName.matches(pattern);

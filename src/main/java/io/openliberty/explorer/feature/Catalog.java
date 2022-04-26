@@ -110,7 +110,7 @@ public class Catalog {
             features.addAll(deps);
         }
         var subgraph = new AsSubgraph<>(dependencies, features);
-        var exporter = new DOTExporter<Feature, DefaultEdge>(f -> "\"" + f + '"');
+        var exporter = new DOTExporter<Feature, DefaultEdge>(f -> '"' + f.simpleName() + '"');
         var writer = new StringWriter();
         exporter.exportGraph(subgraph, writer);
         return writer.toString();
