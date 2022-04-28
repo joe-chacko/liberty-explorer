@@ -11,28 +11,23 @@
  * =============================================================================
  */
 
-package io.openliberty.explorer.feature;
+package io.openliberty.inspect;
 
-import org.jgrapht.graph.AsSubgraph;
+import org.jgrapht.Graph;
+import org.jgrapht.graph.AsUnmodifiableGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleDirectedGraph;
-import org.jgrapht.nio.dot.DOTExporter;
 
 import java.io.IOError;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import static java.util.Arrays.stream;
-import static java.util.function.Predicate.not;
-import static java.util.stream.Collectors.toSet;
 import static org.jgrapht.Graphs.addEdgeWithVertices;
 
 public class Catalog {
@@ -93,26 +88,5 @@ public class Catalog {
         return dependencies.vertexSet().stream().filter(f -> f.matches(pattern));
     }
 
-    public String generateSubgraph(String...patterns) {
-        // convert the patterns to the matching features (ignoring duplicates)
-        final Set<Feature> features = stream(patterns).flatMap(this::findFeature).collect(toSet());
-        // start with the initial set of features
-        Set<Feature> deps = features;
-        while (!deps.isEmpty()) {
-            deps = deps.stream()
-                    // find the next level dependencies
-                    .map(dependencies::outgoingEdgesOf)
-                    .flatMap(Set::stream)
-                    .map(dependencies::getEdgeTarget)
-                    // filter out any that we already know about
-                    .filter(not(features::contains))
-                    .collect(toSet());
-            features.addAll(deps);
-        }
-        var subgraph = new AsSubgraph<>(dependencies, features);
-        var exporter = new DOTExporter<Feature, DefaultEdge>(f -> '"' + f.simpleName() + '"');
-        var writer = new StringWriter();
-        exporter.exportGraph(subgraph, writer);
-        return writer.toString();
-    }
+    public Graph<Feature, DefaultEdge> dependencyGraph() { return new AsUnmodifiableGraph<>(dependencies); }
 }

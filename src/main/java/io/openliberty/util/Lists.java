@@ -10,7 +10,7 @@
  *     IBM Corporation - initial API and implementation
  * =============================================================================
  */
-package io.openliberty.explorer.util;
+package io.openliberty.util;
 
 import java.util.Comparator;
 import java.util.List;

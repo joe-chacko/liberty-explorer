@@ -10,7 +10,7 @@
  *     IBM Corporation - initial API and implementation
  * =============================================================================
  */
-package io.openliberty.explorer.feature;
+package io.openliberty.inspect;
 
 import java.util.Optional;
 import java.util.function.Function;

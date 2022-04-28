@@ -10,7 +10,7 @@
  *     IBM Corporation - initial API and implementation
  * =============================================================================
  */
-package io.openliberty.explorer.feature;
+package io.openliberty.inspect;
 
 import java.io.FileInputStream;
 import java.io.IOError;
@@ -24,12 +24,6 @@ import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static io.openliberty.explorer.feature.Key.IBM_PROVISION_CAPABILITY;
-import static io.openliberty.explorer.feature.Key.IBM_SHORTNAME;
-import static io.openliberty.explorer.feature.Key.SUBSYSTEM_CONTENT;
-import static io.openliberty.explorer.feature.Key.SUBSYSTEM_SYMBOLICNAME;
-import static io.openliberty.explorer.feature.Visibility.PUBLIC;
 
 public final class Feature implements Comparable<Feature> {
     private final String fullName;
@@ -46,20 +40,20 @@ public final class Feature implements Comparable<Feature> {
         } catch (IOException e) {
             throw new IOError(e);
         }
-        Optional<ValueElement> symbolicName = SUBSYSTEM_SYMBOLICNAME.parseValues(attributes).findFirst();
+        Optional<ValueElement> symbolicName = Key.SUBSYSTEM_SYMBOLICNAME.parseValues(attributes).findFirst();
         this.fullName = symbolicName.orElseThrow(Error::new).id;
-        this.shortName = IBM_SHORTNAME.get(attributes).orElse(null);
+        this.shortName = Key.IBM_SHORTNAME.get(attributes).orElse(null);
         this.visibility = symbolicName
                 .map(v -> v.getQualifier("visibility"))
                 .map(String::toUpperCase)
                 .map(Visibility::valueOf)
                 .orElse(Visibility.UNKNOWN);
-        this.name = visibility == PUBLIC ? shortName().orElse(fullName) : fullName;
-        this.containedFeatures = SUBSYSTEM_CONTENT.parseValues(attributes)
+        this.name = visibility == Visibility.PUBLIC ? shortName().orElse(fullName) : fullName;
+        this.containedFeatures = Key.SUBSYSTEM_CONTENT.parseValues(attributes)
                 .filter(v -> "osgi.subsystem.feature".equals(v.getQualifier("type")))
                 .map(v -> v.id)
                 .collect(Collectors.toUnmodifiableList());
-        this.isAutoFeature = IBM_PROVISION_CAPABILITY.isPresent(attributes);
+        this.isAutoFeature = Key.IBM_PROVISION_CAPABILITY.isPresent(attributes);
     }
 
     public String fullName() { return fullName; }

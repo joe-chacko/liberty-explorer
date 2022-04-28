@@ -3,7 +3,7 @@ plugins {
 }
 
 ext {
-   javaMainClass = "io.openliberty.explorer.Main"
+   javaMainClass = "io.openliberty.explore.Main"
 }
 
 tasks.named('wrapper') {

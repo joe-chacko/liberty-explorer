@@ -10,12 +10,12 @@
  *     IBM Corporation - initial API and implementation
  * =============================================================================
  */
-package io.openliberty.explorer.feature;
+package io.openliberty.inspect;
 
 import java.util.function.Predicate;
 
 @SuppressWarnings("unused")
-enum Visibility implements Predicate<Feature> {
+public enum Visibility implements Predicate<Feature> {
     PUBLIC("@"),
     PROTECTED("~"),
     PRIVATE("-"),
