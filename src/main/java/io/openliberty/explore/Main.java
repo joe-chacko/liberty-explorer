@@ -16,21 +16,31 @@ import io.openliberty.inspect.Catalog;
 import io.openliberty.inspect.Feature;
 import io.openliberty.inspect.Visibility;
 import org.jgrapht.Graph;
+import org.jgrapht.GraphPath;
+import org.jgrapht.alg.shortestpath.AllDirectedPaths;
 import org.jgrapht.graph.AsGraphUnion;
 import org.jgrapht.graph.AsSubgraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.EdgeReversedGraph;
+import org.jgrapht.graph.SimpleDirectedGraph;
 import org.jgrapht.nio.Attribute;
 import org.jgrapht.nio.dot.DOTExporter;
 
 import java.io.StringWriter;
 import java.nio.file.Paths;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.BinaryOperator;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collector;
+import java.util.stream.Stream;
 
 import static io.openliberty.explore.Main.Direction.DOWN;
 import static io.openliberty.explore.Main.Direction.UP;
@@ -39,6 +49,7 @@ import static io.openliberty.inspect.Visibility.PROTECTED;
 import static io.openliberty.inspect.Visibility.PUBLIC;
 import static io.openliberty.inspect.Visibility.UNKNOWN;
 import static java.util.Arrays.stream;
+import static java.util.Collections.emptySet;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.function.Predicate.not;
@@ -47,9 +58,9 @@ import static java.util.stream.Collectors.toUnmodifiableSet;
 import static org.jgrapht.nio.DefaultAttribute.createAttribute;
 
 public class Main {
-
-
     public static final Attribute SUBJECT_FILL_COLOR = createAttribute("gray95");
+    private static final boolean VERBOSE = true;
+    private final Set<FeatureQuery> includers;
 
     public static void main(String[] args) {
         try {
@@ -61,26 +72,110 @@ public class Main {
         }
     }
 
-    final Catalog liberty;
-    final Set<Feature> subjectFeatures;
+    private final Catalog liberty;
+    private final Set<Feature> subjectFeatures;
+    private final Set<Feature> augmentedFeatures;
 
-    Main(String libertyRoot, String...args) {
+    Main(String libertyRoot, String...patterns) {
         this.liberty = new Catalog(Paths.get(libertyRoot));
-        // convert the patterns to the matching features (ignoring duplicates)
-        subjectFeatures = stream(args).flatMap(liberty::findFeature).collect(toUnmodifiableSet());
+
+        // first, process the exclude patterns
+        if (VERBOSE) System.err.println("Exclude patterns:");
+        var excluders = stream(patterns)
+                .filter(pattern -> pattern.startsWith("!"))
+                .map(s -> s.substring(1))
+                .map(FeatureQuery::new)
+                .peek(fq -> {if (VERBOSE) System.err.println("\t" + fq);} )
+                .collect(toUnmodifiableSet());
+        // find excluded set
+        var excluded = excluders.stream()
+                .map(FeatureQuery::allFeatures)
+                .flatMap(Set::stream)
+                .collect(toUnmodifiableSet());
+        if (VERBOSE) System.err.println("Excluding features: " + excluded);
+        // remove excluded features from graph
+        // note that this will also remove all the associated edges
+        liberty.exclude(excluded);
+
+        // excluded features have been cast out, so work with whatever is left
+        if (VERBOSE) System.err.println("Include patterns:");
+        includers = stream(patterns)
+                .filter(not(s -> s.startsWith("!")))
+                .map(FeatureQuery::new)
+                .peek(fq -> {if (VERBOSE) System.err.println("\t" + fq);} )
+                .collect(toUnmodifiableSet());
+
+        // find the initial set of features (not including deps)
+        this.subjectFeatures = includers.stream()
+                .map(FeatureQuery::initialFeatures)
+                .flatMap(Set::stream)
+                .collect(toUnmodifiableSet());
+
+        // construct graph of initial features, including paths between them
+        var allPaths = new AllDirectedPaths<>(liberty.dependencyGraph());
+        augmentedFeatures = allPaths.getAllPaths(subjectFeatures, subjectFeatures, true, null)
+                .stream()
+                .map(GraphPath::getVertexList)
+                .flatMap(List::stream)
+                .collect(toUnmodifiableSet());
+
+    }
+
+    class FeatureQuery {
+        private final boolean includeContained;
+        private final boolean includeContainedBy;
+        private final String pattern;
+        private final Set<Feature> originalFeatures;
+        private final Set<Feature> containedFeatures;
+        private final Set<Feature> containedByFeatures;
+
+        FeatureQuery(final String pattern) {
+            this.includeContainedBy = pattern.startsWith("**/");
+            var begin = includeContainedBy ? 3 : 0;
+            this.includeContained = pattern.endsWith("/**");
+            var end = includeContained ? pattern.length() - 3 : pattern.length();
+            this.pattern = pattern.substring(begin, end);
+            this.originalFeatures = liberty.findFeatures(this.pattern).collect(toUnmodifiableSet());
+            this.containedFeatures = includeContained ? findTransitivelyRelatedFeatures(originalFeatures, DOWN) : emptySet();
+            this.containedByFeatures = includeContainedBy ? findTransitivelyRelatedFeatures(originalFeatures, UP) : emptySet();
+        }
+
+        Set<Feature> initialFeatures() { return unmodifiableSet(originalFeatures); }
+
+        Set<Feature> allFeatures() {
+            return Stream.of(originalFeatures, containedFeatures, containedByFeatures)
+                    .flatMap(Set::stream)
+                    .collect(toUnmodifiableSet());
+        }
+
+        Graph<Feature, DefaultEdge> subgraph() {
+            return new AsGraphUnion<>(
+                    new AsSubgraph<>(liberty.dependencyGraph(), containedFeatures),
+                    new AsSubgraph<>(liberty.dependencyGraph(), containedByFeatures)
+            );
+        }
+
+        @Override
+        public String toString() {
+            return (includeContainedBy ? "**/" : "") + pattern + (includeContained ? "/**" : "");
+        }
     }
 
     public String generateSubgraph() {
-        var contains = findTransitivelyRelatedFeatures(subjectFeatures, DOWN);
-        var containedBy = findTransitivelyRelatedFeatures(subjectFeatures, UP);
-        Graph<Feature, DefaultEdge> g = liberty.dependencyGraph();
-        var g1 = new AsSubgraph<>(g, contains);
-        var g2 = new AsSubgraph<>(g, containedBy);
-        var g3 = new AsGraphUnion<>(g1, g2);
+        class Holder {
+            Graph<Feature, DefaultEdge> graph = new AsSubgraph<>(liberty.dependencyGraph(), augmentedFeatures);
+            void add(Graph<Feature, DefaultEdge> graphToAdd) { graph = new AsGraphUnion<>(graph, graphToAdd); }
+            void add(Holder that) { add(that.graph); }
+        }
+        var g = includers.stream()
+                .map(FeatureQuery::subgraph)
+                .collect(Holder::new, Holder::add, Holder::add)
+                .graph;
+
         var exporter = new DOTExporter<Feature, DefaultEdge>(f -> '"' + f.simpleName() + '"');
         exporter.setVertexAttributeProvider(this::getDotAttributes);
         var writer = new StringWriter();
-        exporter.exportGraph(g3, writer);
+        exporter.exportGraph(g, writer);
         return writer.toString();
     }
 

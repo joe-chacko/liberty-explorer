@@ -16,14 +16,20 @@ import java.io.FileInputStream;
 import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static java.lang.Boolean.TRUE;
+import static java.util.Objects.requireNonNull;
 
 public final class Feature implements Comparable<Feature> {
     private final String fullName;
@@ -70,8 +76,15 @@ public final class Feature implements Comparable<Feature> {
     }
 
     public boolean matches(String pattern) {
-        if (null != shortName) if (shortName.matches(pattern)) return true;
-        return fullName.matches(pattern);
+        pattern = requireNonNull(pattern).toLowerCase();
+        if (!pattern.contains(":")) pattern = "glob:" + pattern;
+        var matcher = FileSystems.getDefault().getPathMatcher(pattern);
+        return shortName()
+                .map(String::toLowerCase)
+                .map(Paths::get)
+                .map(matcher::matches)
+                .filter(TRUE::equals)
+                .orElseGet(() -> matcher.matches(Paths.get(fullName().toLowerCase())));
     }
 
     @Override
@@ -95,5 +108,5 @@ public final class Feature implements Comparable<Feature> {
     public int hashCode() { return Objects.hash(fullName); }
 
     @Override
-    public String toString() { return displayName(); }
+    public String toString() { return fullName(); }
 }

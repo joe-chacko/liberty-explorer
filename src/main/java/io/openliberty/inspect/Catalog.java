@@ -14,36 +14,47 @@
 package io.openliberty.inspect;
 
 import org.jgrapht.Graph;
+import org.jgrapht.Graphs;
 import org.jgrapht.graph.AsUnmodifiableGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleDirectedGraph;
 
 import java.io.IOError;
 import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Consumer;
+import java.util.Set;
 import java.util.stream.Stream;
 
-import static org.jgrapht.Graphs.addEdgeWithVertices;
+import static java.util.Objects.requireNonNull;
+import static java.util.function.Predicate.not;
 
 public class Catalog {
-    final Path featureSubdir;
-    final Map<String, Feature> featureMap = new HashMap<>();
-    final Map<String, Feature> shortNames = new HashMap<>();
-    final SimpleDirectedGraph<Feature, DefaultEdge> dependencies = new SimpleDirectedGraph<>(DefaultEdge.class);
+    public static SimpleDirectedGraph<Feature, DefaultEdge> newGraph() {
+        return new SimpleDirectedGraph<>(DefaultEdge.class);
+    }
+
+    private final Path featureDir;
+    // Wrap (downcased) feature names and shortnames as Path objects
+    // to allow use of java.nio.file.FileSystem's built-in glob matching
+    private final Map<Path, Feature> featureIndex = new HashMap<>();
+    private SimpleDirectedGraph<Feature, DefaultEdge> dependencies = newGraph();
+
     public Catalog(Path libertyRoot) {
-        this.featureSubdir = libertyRoot.resolve("lib/features");
+        final Map<String, Feature> featureMap = new HashMap<>();
+        this.featureDir = libertyRoot.resolve("lib/features");
         // validate directories
         if (!Files.isDirectory(libertyRoot))
             throw new Error("Not a valid directory: " + libertyRoot.toFile().getAbsolutePath());
-        if (!Files.isDirectory(featureSubdir))
-            throw new Error("No feature subdirectory found: " + featureSubdir.toFile().getAbsolutePath());
+        if (!Files.isDirectory(featureDir))
+            throw new Error("No feature subdirectory found: " + featureDir.toFile().getAbsolutePath());
         // parse feature manifests
-        try (var paths = Files.list(featureSubdir)) {
+        try (var paths = Files.list(featureDir)) {
             paths
                     .filter(Files::isRegularFile)
                     .filter(p -> p.toString().endsWith(".mf"))
@@ -51,42 +62,49 @@ public class Catalog {
                     .forEach(f -> {
                         var oldValue = featureMap.put(f.fullName(), f);
                         if (null != oldValue)
-                            System.err.println("WARNING: duplicate symbolic name found: " + f.fullName());
+                            System.err.printf("WARNING: duplicate short names found for features: '%s' and '%s'%n", f, oldValue);
+                        featureIndex.put(Paths.get(f.fullName().toLowerCase()), f);
                         f.shortName()
-                                .map(shortName -> shortNames.put(shortName, f))
-                                .ifPresent(shortName -> System.err.println("WARNING: duplicate short name found: " + shortName));
+                                .map(String::toLowerCase)
+                                .map(Paths::get)
+                                .map(p -> featureIndex.put(p, f))
+                                .filter(not(f::equals)) // ignore if the duplicate name is for the same feature (i.e. it had the same symbolic and shortname)
+                                .ifPresent(f2 -> System.err.printf("WARNING: duplicate short names found for features: '%s' and '%s'%n", f, f2));
                     });
         } catch (IOException e) {
             throw new IOError(e);
         }
-        // add the features and their dependencies to the graph
+
+        // add the features to the graph
+        featureMap.values()
+                .stream()
+                .distinct()
+                .forEach(dependencies::addVertex);
+        // add the feature dependencies to the graph
         featureMap.values().forEach(f1 -> f1.containedFeatures()
                 .map(featureMap::get)
                 .filter(Objects::nonNull) // ignore unknown features TODO: try tolerated versions instead
-                .forEach(f2 -> addEdgeWithVertices(dependencies, f1, f2)));
+                .forEach(f2 -> dependencies.addEdge(f1, f2)));
     }
 
-    public Stream<Feature> dependencies(Feature rootFeature) {
-        return rootFeature.containedFeatures().map(featureMap::get).filter(Objects::nonNull);
-    }
-
-    public void dfs(Feature rootFeature, Consumer<Feature> action) {
-        dependencies(rootFeature).forEach(f -> dfs(f, action));
-        action.accept(rootFeature);
-    }
-
-    public void doSomething() {
-        dependencies.vertexSet()
-                .stream()
-                .filter(Visibility.PUBLIC)
-                .filter(f -> dependencies.inDegreeOf(f) == 0)
+    public Stream<Feature> findFeatures(String pattern) {
+        pattern = requireNonNull(pattern).toLowerCase();
+        if (!pattern.contains(":")) pattern = "glob:" + pattern;
+        return featureIndex.keySet().stream()
+                .filter(FileSystems.getDefault().getPathMatcher(pattern)::matches)
+                .map(featureIndex::get)
+                .filter(dependencies::containsVertex)
                 .sorted()
-                .forEach(System.out::println);
-    }
-
-    public Stream<Feature> findFeature(String pattern) {
-        return dependencies.vertexSet().stream().filter(f -> f.matches(pattern));
+                .distinct();
     }
 
     public Graph<Feature, DefaultEdge> dependencyGraph() { return new AsUnmodifiableGraph<>(dependencies); }
+
+    public void exclude(Set<Feature> excluded) {
+//        var in = excluded.stream().map(dependencies::incomingEdgesOf).flatMap(Set::stream).collect(Collectors.toUnmodifiableSet());
+//        var out = excluded.stream().map(dependencies::outgoingEdgesOf).flatMap(Set::stream).collect(Collectors.toUnmodifiableSet());
+//        dependencies.removeAllEdges(in);
+//        dependencies.removeAllEdges(out);
+        dependencies.removeAllVertices(excluded);
+    }
 }
