@@ -16,11 +16,8 @@ import java.io.FileInputStream;
 import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.jar.Attributes;
@@ -28,10 +25,7 @@ import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.lang.Boolean.TRUE;
-import static java.util.Objects.requireNonNull;
-
-public final class Feature implements Comparable<Feature> {
+public final class Feature implements Element {
     private final String fullName;
     private final String shortName;
     private final String name;
@@ -62,33 +56,21 @@ public final class Feature implements Comparable<Feature> {
         this.isAutoFeature = Key.IBM_PROVISION_CAPABILITY.isPresent(attributes);
     }
 
+    @Override
     public String fullName() { return fullName; }
+    @Override
     public Optional<String> shortName() { return Optional.ofNullable(shortName); }
+    @Override
     public Visibility visibility() { return this.visibility; }
+    @Override
     public String name() { return name; }
-    public Stream<String> containedFeatures() { return containedFeatures.stream(); }
-    public String displayName() { return (isAutoFeature ? "&" : visibility.indicator) + name(); }
-
-    public String simpleName() {
-        return shortName().orElseGet(() -> fullName
-                .replaceFirst("^com.ibm.websphere.app(server|client).", "")
-                .replaceFirst("^io.openliberty.", ""));
-    }
-
-    public boolean matches(String pattern) {
-        pattern = requireNonNull(pattern).toLowerCase();
-        if (!pattern.contains(":")) pattern = "glob:" + pattern;
-        var matcher = FileSystems.getDefault().getPathMatcher(pattern);
-        return shortName()
-                .map(String::toLowerCase)
-                .map(Paths::get)
-                .map(matcher::matches)
-                .filter(TRUE::equals)
-                .orElseGet(() -> matcher.matches(Paths.get(fullName().toLowerCase())));
-    }
+    @Override
+    public Stream<String> containedElements() { return containedFeatures.stream(); }
 
     @Override
-    public int compareTo(Feature that) {
+    public int compareTo(Element other) {
+        if (!(other instanceof Feature)) return -1; // Features sort before other element types
+        Feature that = (Feature) other;
         int result = Boolean.compare(this.isAutoFeature, that.isAutoFeature);
         if (0 == result) result = this.visibility().compareTo(that.visibility());
         if (0 == result) result = this.name().compareTo(that.name());

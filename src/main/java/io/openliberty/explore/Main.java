@@ -13,7 +13,7 @@
 package io.openliberty.explore;
 
 import io.openliberty.inspect.Catalog;
-import io.openliberty.inspect.Feature;
+import io.openliberty.inspect.Element;
 import io.openliberty.inspect.Visibility;
 import org.jgrapht.Graph;
 import org.jgrapht.GraphPath;
@@ -22,28 +22,21 @@ import org.jgrapht.graph.AsGraphUnion;
 import org.jgrapht.graph.AsSubgraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.EdgeReversedGraph;
-import org.jgrapht.graph.SimpleDirectedGraph;
 import org.jgrapht.nio.Attribute;
 import org.jgrapht.nio.dot.DOTExporter;
 
 import java.io.StringWriter;
 import java.nio.file.Paths;
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
-import java.util.function.BinaryOperator;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.stream.Collector;
 import java.util.stream.Stream;
 
-import static io.openliberty.explore.Main.Direction.DOWN;
-import static io.openliberty.explore.Main.Direction.UP;
+import static io.openliberty.explore.Main.Direction.FORWARD;
+import static io.openliberty.explore.Main.Direction.REVERSE;
 import static io.openliberty.inspect.Visibility.PRIVATE;
 import static io.openliberty.inspect.Visibility.PROTECTED;
 import static io.openliberty.inspect.Visibility.PUBLIC;
@@ -62,6 +55,7 @@ public class Main {
     private static final boolean VERBOSE = true;
     private final Set<FeatureQuery> includers;
 
+    @SuppressWarnings("ThrowablePrintedToSystemOut")
     public static void main(String[] args) {
         try {
             Main main = new Main("/Users/chackoj/wlp", args);
@@ -73,8 +67,8 @@ public class Main {
     }
 
     private final Catalog liberty;
-    private final Set<Feature> subjectFeatures;
-    private final Set<Feature> augmentedFeatures;
+    private final Set<Element> initialMatches;
+    private final Set<Element> initialPlusPaths;
 
     Main(String libertyRoot, String...patterns) {
         this.liberty = new Catalog(Paths.get(libertyRoot));
@@ -89,7 +83,7 @@ public class Main {
                 .collect(toUnmodifiableSet());
         // find excluded set
         var excluded = excluders.stream()
-                .map(FeatureQuery::allFeatures)
+                .map(FeatureQuery::allMatches)
                 .flatMap(Set::stream)
                 .collect(toUnmodifiableSet());
         if (VERBOSE) System.err.println("Excluding features: " + excluded);
@@ -106,14 +100,14 @@ public class Main {
                 .collect(toUnmodifiableSet());
 
         // find the initial set of features (not including deps)
-        this.subjectFeatures = includers.stream()
-                .map(FeatureQuery::initialFeatures)
+        this.initialMatches = includers.stream()
+                .map(FeatureQuery::initialMatches)
                 .flatMap(Set::stream)
                 .collect(toUnmodifiableSet());
 
         // construct graph of initial features, including paths between them
         var allPaths = new AllDirectedPaths<>(liberty.dependencyGraph());
-        augmentedFeatures = allPaths.getAllPaths(subjectFeatures, subjectFeatures, true, null)
+        initialPlusPaths = allPaths.getAllPaths(initialMatches, initialMatches, true, null)
                 .stream()
                 .map(GraphPath::getVertexList)
                 .flatMap(List::stream)
@@ -125,9 +119,9 @@ public class Main {
         private final boolean includeContained;
         private final boolean includeContainedBy;
         private final String pattern;
-        private final Set<Feature> originalFeatures;
-        private final Set<Feature> containedFeatures;
-        private final Set<Feature> containedByFeatures;
+        private final Set<Element> initialMatches;
+        private final Set<Element> contained;
+        private final Set<Element> containedBy;
 
         FeatureQuery(final String pattern) {
             this.includeContainedBy = pattern.startsWith("**/");
@@ -135,23 +129,23 @@ public class Main {
             this.includeContained = pattern.endsWith("/**");
             var end = includeContained ? pattern.length() - 3 : pattern.length();
             this.pattern = pattern.substring(begin, end);
-            this.originalFeatures = liberty.findFeatures(this.pattern).collect(toUnmodifiableSet());
-            this.containedFeatures = includeContained ? findTransitivelyRelatedFeatures(originalFeatures, DOWN) : emptySet();
-            this.containedByFeatures = includeContainedBy ? findTransitivelyRelatedFeatures(originalFeatures, UP) : emptySet();
+            this.initialMatches = liberty.findFeatures(this.pattern).collect(toUnmodifiableSet());
+            this.contained = includeContained ? findConnectedEdges(initialMatches, FORWARD) : emptySet();
+            this.containedBy = includeContainedBy ? findConnectedEdges(initialMatches, REVERSE) : emptySet();
         }
 
-        Set<Feature> initialFeatures() { return unmodifiableSet(originalFeatures); }
+        Set<Element> initialMatches() { return initialMatches; }
 
-        Set<Feature> allFeatures() {
-            return Stream.of(originalFeatures, containedFeatures, containedByFeatures)
+        Set<Element> allMatches() {
+            return Stream.of(initialMatches, contained, containedBy)
                     .flatMap(Set::stream)
                     .collect(toUnmodifiableSet());
         }
 
-        Graph<Feature, DefaultEdge> subgraph() {
+        Graph<Element, DefaultEdge> subgraph() {
             return new AsGraphUnion<>(
-                    new AsSubgraph<>(liberty.dependencyGraph(), containedFeatures),
-                    new AsSubgraph<>(liberty.dependencyGraph(), containedByFeatures)
+                    new AsSubgraph<>(liberty.dependencyGraph(), contained),
+                    new AsSubgraph<>(liberty.dependencyGraph(), containedBy)
             );
         }
 
@@ -163,8 +157,8 @@ public class Main {
 
     public String generateSubgraph() {
         class Holder {
-            Graph<Feature, DefaultEdge> graph = new AsSubgraph<>(liberty.dependencyGraph(), augmentedFeatures);
-            void add(Graph<Feature, DefaultEdge> graphToAdd) { graph = new AsGraphUnion<>(graph, graphToAdd); }
+            Graph<Element, DefaultEdge> graph = new AsSubgraph<>(liberty.dependencyGraph(), initialPlusPaths);
+            void add(Graph<Element, DefaultEdge> graphToAdd) { graph = new AsGraphUnion<>(graph, graphToAdd); }
             void add(Holder that) { add(that.graph); }
         }
         var g = includers.stream()
@@ -172,7 +166,7 @@ public class Main {
                 .collect(Holder::new, Holder::add, Holder::add)
                 .graph;
 
-        var exporter = new DOTExporter<Feature, DefaultEdge>(f -> '"' + f.simpleName() + '"');
+        var exporter = new DOTExporter<Element, DefaultEdge>(f -> '"' + f.simpleName() + '"');
         exporter.setVertexAttributeProvider(this::getDotAttributes);
         var writer = new StringWriter();
         exporter.exportGraph(g, writer);
@@ -186,23 +180,23 @@ public class Main {
             UNKNOWN, createAttribute("egg")
     )));
 
-    private Map<String, Attribute> getDotAttributes(Feature feature) {
+    private Map<String, Attribute> getDotAttributes(Element feature) {
         Map<String, Attribute> result = new HashMap<>();
         result.put("shape", SHAPE_FOR_VISIBILITY.get(feature.visibility()));
-        if (subjectFeatures.contains(feature)) {
+        if (initialMatches.contains(feature)) {
             result.put("bgcolor", SUBJECT_FILL_COLOR);
             result.put("style", createAttribute("filled"));
         }
         return result;
     }
 
-    enum Direction {DOWN, UP}
+    enum Direction {FORWARD, REVERSE}
 
-    private Set<Feature> findTransitivelyRelatedFeatures(Set<Feature> features, Direction direction) {
+    private Set<Element> findConnectedEdges(Set<Element> features, Direction direction) {
         // start with the initial set of features
-        Set<Feature> results = new HashSet<>(features);
-        Set<Feature> deps = results;
-        Graph<Feature, DefaultEdge> graph = direction == DOWN ? liberty.dependencyGraph() : new EdgeReversedGraph<>(liberty.dependencyGraph());
+        var results = new HashSet<>(features);
+        var deps = unmodifiableSet(results);
+        var graph = direction == FORWARD ? liberty.dependencyGraph() : new EdgeReversedGraph<>(liberty.dependencyGraph());
         while (!deps.isEmpty()) {
             deps = deps.stream()
                     // find the next level dependencies

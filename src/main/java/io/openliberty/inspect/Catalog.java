@@ -14,7 +14,6 @@
 package io.openliberty.inspect;
 
 import org.jgrapht.Graph;
-import org.jgrapht.Graphs;
 import org.jgrapht.graph.AsUnmodifiableGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleDirectedGraph;
@@ -35,19 +34,18 @@ import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 
 public class Catalog {
-    public static SimpleDirectedGraph<Feature, DefaultEdge> newGraph() {
+    public static SimpleDirectedGraph<Element, DefaultEdge> newGraph() {
         return new SimpleDirectedGraph<>(DefaultEdge.class);
     }
 
-    private final Path featureDir;
     // Wrap (downcased) feature names and shortnames as Path objects
     // to allow use of java.nio.file.FileSystem's built-in glob matching
     private final Map<Path, Feature> featureIndex = new HashMap<>();
-    private SimpleDirectedGraph<Feature, DefaultEdge> dependencies = newGraph();
+    private final SimpleDirectedGraph<Element, DefaultEdge> dependencies = newGraph();
 
     public Catalog(Path libertyRoot) {
         final Map<String, Feature> featureMap = new HashMap<>();
-        this.featureDir = libertyRoot.resolve("lib/features");
+        Path featureDir = libertyRoot.resolve("lib/features");
         // validate directories
         if (!Files.isDirectory(libertyRoot))
             throw new Error("Not a valid directory: " + libertyRoot.toFile().getAbsolutePath());
@@ -81,7 +79,7 @@ public class Catalog {
                 .distinct()
                 .forEach(dependencies::addVertex);
         // add the feature dependencies to the graph
-        featureMap.values().forEach(f1 -> f1.containedFeatures()
+        featureMap.values().forEach(f1 -> f1.containedElements()
                 .map(featureMap::get)
                 .filter(Objects::nonNull) // ignore unknown features TODO: try tolerated versions instead
                 .forEach(f2 -> dependencies.addEdge(f1, f2)));
@@ -98,13 +96,9 @@ public class Catalog {
                 .distinct();
     }
 
-    public Graph<Feature, DefaultEdge> dependencyGraph() { return new AsUnmodifiableGraph<>(dependencies); }
+    public Graph<Element, DefaultEdge> dependencyGraph() { return new AsUnmodifiableGraph<>(dependencies); }
 
-    public void exclude(Set<Feature> excluded) {
-//        var in = excluded.stream().map(dependencies::incomingEdgesOf).flatMap(Set::stream).collect(Collectors.toUnmodifiableSet());
-//        var out = excluded.stream().map(dependencies::outgoingEdgesOf).flatMap(Set::stream).collect(Collectors.toUnmodifiableSet());
-//        dependencies.removeAllEdges(in);
-//        dependencies.removeAllEdges(out);
+    public void exclude(Set<Element> excluded) {
         dependencies.removeAllVertices(excluded);
     }
 }
