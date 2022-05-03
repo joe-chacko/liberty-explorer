@@ -12,7 +12,6 @@
  */
 package io.openliberty.explore;
 
-import io.openliberty.inspect.Catalog;
 import io.openliberty.inspect.Element;
 import io.openliberty.inspect.Visibility;
 import org.jgrapht.Graph;
@@ -24,9 +23,11 @@ import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.EdgeReversedGraph;
 import org.jgrapht.nio.Attribute;
 import org.jgrapht.nio.dot.DOTExporter;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Parameters;
+import picocli.CommandLine.ParentCommand;
 
 import java.io.StringWriter;
-import java.nio.file.Paths;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,13 +36,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static io.openliberty.explore.Main.Direction.FORWARD;
-import static io.openliberty.explore.Main.Direction.REVERSE;
+import static io.openliberty.explore.GraphCommand.Direction.FORWARD;
+import static io.openliberty.explore.GraphCommand.Direction.REVERSE;
 import static io.openliberty.inspect.Visibility.PRIVATE;
 import static io.openliberty.inspect.Visibility.PROTECTED;
 import static io.openliberty.inspect.Visibility.PUBLIC;
 import static io.openliberty.inspect.Visibility.UNKNOWN;
-import static java.util.Arrays.stream;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
@@ -50,53 +50,61 @@ import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Collectors.toUnmodifiableSet;
 import static org.jgrapht.nio.DefaultAttribute.createAttribute;
 
-public class Main {
-    public static final Attribute SUBJECT_FILL_COLOR = createAttribute("gray95");
-    private static final boolean VERBOSE = true;
-    private final Set<FeatureQuery> includers;
+@Command(
+        name = "graph",
+        description = "Produce a graph of selected features"
+)
+public class GraphCommand implements Runnable {
+    public final Attribute SUBJECT_FILL_COLOR = createAttribute("gray95");
+
+    @ParentCommand
+    LibertyExplorer lx;
+
+    @Parameters(
+            description = "one or more glob patterns to match features by name",
+            arity = "1..*"
+    )
+    List<String> patterns;
+
+    private Set<Element> initialMatches;
+    private Set<Element> initialPlusPaths;
+    private Set<FeatureQuery> includers;
 
     @SuppressWarnings("ThrowablePrintedToSystemOut")
-    public static void main(String[] args) {
+    public void run() {
         try {
-            Main main = new Main("/Users/chackoj/wlp", args);
-            System.out.println(main.generateSubgraph());
+            init();
+            System.out.println(generateSubgraph());
         } catch (Throwable t) {
             t.printStackTrace();
             System.out.println(t);
         }
     }
 
-    private final Catalog liberty;
-    private final Set<Element> initialMatches;
-    private final Set<Element> initialPlusPaths;
-
-    Main(String libertyRoot, String...patterns) {
-        this.liberty = new Catalog(Paths.get(libertyRoot));
-
+    void init() {
         // first, process the exclude patterns
-        if (VERBOSE) System.err.println("Exclude patterns:");
-        var excluders = stream(patterns)
+        if (lx.verbose) System.err.println("Exclude patterns:");
+        var excluders = patterns.stream()
                 .filter(pattern -> pattern.startsWith("!"))
                 .map(s -> s.substring(1))
                 .map(FeatureQuery::new)
-                .peek(fq -> {if (VERBOSE) System.err.println("\t" + fq);} )
+                .peek(fq -> {if (lx.verbose) System.err.println("\t" + fq);} )
                 .collect(toUnmodifiableSet());
         // find excluded set
         var excluded = excluders.stream()
                 .map(FeatureQuery::allMatches)
                 .flatMap(Set::stream)
                 .collect(toUnmodifiableSet());
-        if (VERBOSE) System.err.println("Excluding features: " + excluded);
-        // remove excluded features from graph
-        // note that this will also remove all the associated edges
-        liberty.exclude(excluded);
+        if (lx.verbose) System.err.println("Excluding features: " + excluded);
+        // remove excluded features (and associated edges) from graph
+        lx.liberty.exclude(excluded);
 
-        // excluded features have been cast out, so work with whatever is left
-        if (VERBOSE) System.err.println("Include patterns:");
-        includers = stream(patterns)
+        // work with remaining features
+        if (lx.verbose) System.err.println("Include patterns:");
+        includers = patterns.stream()
                 .filter(not(s -> s.startsWith("!")))
                 .map(FeatureQuery::new)
-                .peek(fq -> {if (VERBOSE) System.err.println("\t" + fq);} )
+                .peek(fq -> {if (lx.verbose) System.err.println("\t" + fq);} )
                 .collect(toUnmodifiableSet());
 
         // find the initial set of features (not including deps)
@@ -106,7 +114,7 @@ public class Main {
                 .collect(toUnmodifiableSet());
 
         // construct graph of initial features, including paths between them
-        var allPaths = new AllDirectedPaths<>(liberty.dependencyGraph());
+        var allPaths = new AllDirectedPaths<>(lx.liberty.dependencyGraph());
         initialPlusPaths = allPaths.getAllPaths(initialMatches, initialMatches, true, null)
                 .stream()
                 .map(GraphPath::getVertexList)
@@ -129,7 +137,7 @@ public class Main {
             this.includeContained = pattern.endsWith("/**");
             var end = includeContained ? pattern.length() - 3 : pattern.length();
             this.pattern = pattern.substring(begin, end);
-            this.initialMatches = liberty.findFeatures(this.pattern).collect(toUnmodifiableSet());
+            this.initialMatches = lx.liberty.findFeatures(this.pattern).collect(toUnmodifiableSet());
             this.contained = includeContained ? findConnectedEdges(initialMatches, FORWARD) : emptySet();
             this.containedBy = includeContainedBy ? findConnectedEdges(initialMatches, REVERSE) : emptySet();
         }
@@ -144,8 +152,8 @@ public class Main {
 
         Graph<Element, DefaultEdge> subgraph() {
             return new AsGraphUnion<>(
-                    new AsSubgraph<>(liberty.dependencyGraph(), contained),
-                    new AsSubgraph<>(liberty.dependencyGraph(), containedBy)
+                    new AsSubgraph<>(lx.liberty.dependencyGraph(), contained),
+                    new AsSubgraph<>(lx.liberty.dependencyGraph(), containedBy)
             );
         }
 
@@ -157,7 +165,7 @@ public class Main {
 
     public String generateSubgraph() {
         class Holder {
-            Graph<Element, DefaultEdge> graph = new AsSubgraph<>(liberty.dependencyGraph(), initialPlusPaths);
+            Graph<Element, DefaultEdge> graph = new AsSubgraph<>(lx.liberty.dependencyGraph(), initialPlusPaths);
             void add(Graph<Element, DefaultEdge> graphToAdd) { graph = new AsGraphUnion<>(graph, graphToAdd); }
             void add(Holder that) { add(that.graph); }
         }
@@ -196,7 +204,7 @@ public class Main {
         // start with the initial set of features
         var results = new HashSet<>(features);
         var deps = unmodifiableSet(results);
-        var graph = direction == FORWARD ? liberty.dependencyGraph() : new EdgeReversedGraph<>(liberty.dependencyGraph());
+        var graph = direction == FORWARD ? lx.liberty.dependencyGraph() : new EdgeReversedGraph<>(lx.liberty.dependencyGraph());
         while (!deps.isEmpty()) {
             deps = deps.stream()
                     // find the next level dependencies

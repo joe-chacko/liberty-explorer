@@ -43,7 +43,9 @@ public class Catalog {
     private final Map<Path, Feature> featureIndex = new HashMap<>();
     private final SimpleDirectedGraph<Element, DefaultEdge> dependencies = newGraph();
 
-    public Catalog(Path libertyRoot) {
+    public Catalog(String libertyRoot) { this(Paths.get(libertyRoot)); }
+
+    private Catalog(Path libertyRoot) {
         final Map<String, Feature> featureMap = new HashMap<>();
         Path featureDir = libertyRoot.resolve("lib/features");
         // validate directories
