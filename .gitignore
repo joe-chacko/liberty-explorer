@@ -1,3 +1,8 @@
+### Manually added rules ###
+
+# ignore PDFs
+*.pdf
+
 
 # Created by https://www.toptal.com/developers/gitignore/api/macos,intellij,gradle,java,vim,visualstudiocode
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,intellij,gradle,java,vim,visualstudiocode
