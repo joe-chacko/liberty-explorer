@@ -38,63 +38,65 @@ public class Catalog {
         return new SimpleDirectedGraph<>(DefaultEdge.class);
     }
 
+    private final Map<String, Element> elements = new HashMap<>();
     // Wrap (downcased) feature names and shortnames as Path objects
     // to allow use of java.nio.file.FileSystem's built-in glob matching
-    private final Map<Path, Feature> featureIndex = new HashMap<>();
+    private final Map<Path, Element> index = new HashMap<>();
     private final SimpleDirectedGraph<Element, DefaultEdge> dependencies = newGraph();
 
     public Catalog(String libertyRoot) { this(validate(Paths.get(libertyRoot), "Not a valid directory: ")); }
 
     private Catalog(Path libertyRoot) {
-        final Map<String, Feature> featureMap = new HashMap<>();
         Path libDir = validate(libertyRoot.resolve("lib"), "No lib subdirectory found: ");
         Path featureDir = validate(libertyRoot.resolve("lib/features"), "No feature subdirectory found: ");
-        // validate directories
         // parse feature manifests
         try (var paths = Files.list(featureDir)) {
             paths
                     .filter(Files::isRegularFile)
                     .filter(p -> p.toString().endsWith(".mf"))
                     .map(Feature::new)
-                    .forEach(f -> {
-                        var oldValue = featureMap.put(f.fullName(), f);
-                        if (null != oldValue)
-                            System.err.printf("WARNING: duplicate short names found for features: '%s' and '%s'%n", f, oldValue);
-                        featureIndex.put(Paths.get(f.fullName().toLowerCase()), f);
-                        f.shortName()
-                                .map(String::toLowerCase)
-                                .map(Paths::get)
-                                .map(p -> featureIndex.put(p, f))
-                                .filter(not(f::equals)) // ignore if the duplicate name is for the same feature (i.e. it had the same symbolic and shortname)
-                                .ifPresent(f2 -> System.err.printf("WARNING: duplicate short names found for features: '%s' and '%s'%n", f, f2));
-                    });
+                    .forEach(this::init);
         } catch (IOException e) {
             throw new IOError(e);
         }
 
         // add the features to the graph
-        featureMap.values()
-                .stream()
-                .distinct()
-                .forEach(dependencies::addVertex);
+        elements.values().forEach(dependencies::addVertex);
         // add the feature dependencies to the graph
-        featureMap.values().forEach(f1 -> f1.containedElements()
-                .map(featureMap::get)
+        elements.values().forEach(this::initDeps);
+    }
+
+    private void init(Element e) {
+        var oldValue = elements.put(e.fullName(), e);
+        if (null != oldValue) System.err.printf("WARNING: duplicate short names found for features: '%s' and '%s'%n", e, oldValue);
+        index.put(Paths.get(e.fullName().toLowerCase()), e);
+        dependencies.addVertex(e);
+        e.shortName()
+                .map(String::toLowerCase)
+                .map(Paths::get)
+                .map(p -> index.put(p, e))
+                .filter(not(e::equals)) // ignore duplicate names for the same feature (i.e. it had the same symbolic and shortname)
+                .ifPresent(f2 -> System.err.printf("WARNING: duplicate short names found for features: '%s' and '%s'%n", e, f2));
+    }
+
+    private void initDeps(Element f1) {
+        f1.containedElements()
+                .map(elements::get)
                 .filter(Objects::nonNull) // ignore unknown features TODO: try tolerated versions instead
-                .forEach(f2 -> dependencies.addEdge(f1, f2)));
+                .forEach(f2 -> dependencies.addEdge(f1, f2));
     }
 
-    private static Path validate(Path path, String desc) {
+    private static Path validate(Path path, String errorMessage) {
         if (isDirectory(path)) return path;
-        throw new Error(desc + path.toFile().getAbsolutePath());
+        throw new Error(errorMessage + path.toFile().getAbsolutePath());
     }
 
-    public Stream<Feature> findFeatures(String pattern) {
+    public Stream<Element> findMatches(String pattern) {
         pattern = requireNonNull(pattern).toLowerCase();
         if (!pattern.contains(":")) pattern = "glob:" + pattern;
-        return featureIndex.keySet().stream()
+        return index.keySet().stream()
                 .filter(FileSystems.getDefault().getPathMatcher(pattern)::matches)
-                .map(featureIndex::get)
+                .map(index::get)
                 .filter(dependencies::containsVertex)
                 .sorted()
                 .distinct();

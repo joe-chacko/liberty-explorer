@@ -28,10 +28,8 @@ import picocli.CommandLine.HelpCommand;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.PropertiesDefaultProvider;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
@@ -177,7 +175,7 @@ public class LibertyExplorer implements Callable<Integer> {
             this.includeContained = pattern.endsWith(INCLUDE_CONTAINED_SUFFIX);
             var end = includeContained ? pattern.length() - INCLUDE_CONTAINED_SUFFIX.length() : pattern.length();
             this.pattern = pattern.substring(begin, end);
-            this.initialMatches = liberty.findFeatures(this.pattern).collect(toUnmodifiableSet());
+            this.initialMatches = liberty.findMatches(this.pattern).collect(toUnmodifiableSet());
             this.contained = includeContained ? findConnectedEdges(initialMatches, FORWARD) : emptySet();
             this.containedBy = includeContainedBy ? findConnectedEdges(initialMatches, REVERSE) : emptySet();
         }
