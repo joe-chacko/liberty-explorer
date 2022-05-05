@@ -27,9 +27,9 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Stream;
 
+import static java.nio.file.Files.isDirectory;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 
@@ -43,16 +43,13 @@ public class Catalog {
     private final Map<Path, Feature> featureIndex = new HashMap<>();
     private final SimpleDirectedGraph<Element, DefaultEdge> dependencies = newGraph();
 
-    public Catalog(String libertyRoot) { this(Paths.get(libertyRoot)); }
+    public Catalog(String libertyRoot) { this(validate(Paths.get(libertyRoot), "Not a valid directory: ")); }
 
     private Catalog(Path libertyRoot) {
         final Map<String, Feature> featureMap = new HashMap<>();
-        Path featureDir = libertyRoot.resolve("lib/features");
+        Path libDir = validate(libertyRoot.resolve("lib"), "No lib subdirectory found: ");
+        Path featureDir = validate(libertyRoot.resolve("lib/features"), "No feature subdirectory found: ");
         // validate directories
-        if (!Files.isDirectory(libertyRoot))
-            throw new Error("Not a valid directory: " + libertyRoot.toFile().getAbsolutePath());
-        if (!Files.isDirectory(featureDir))
-            throw new Error("No feature subdirectory found: " + featureDir.toFile().getAbsolutePath());
         // parse feature manifests
         try (var paths = Files.list(featureDir)) {
             paths
@@ -87,6 +84,11 @@ public class Catalog {
                 .forEach(f2 -> dependencies.addEdge(f1, f2)));
     }
 
+    private static Path validate(Path path, String desc) {
+        if (isDirectory(path)) return path;
+        throw new Error(desc + path.toFile().getAbsolutePath());
+    }
+
     public Stream<Feature> findFeatures(String pattern) {
         pattern = requireNonNull(pattern).toLowerCase();
         if (!pattern.contains(":")) pattern = "glob:" + pattern;
@@ -100,7 +102,7 @@ public class Catalog {
 
     public Graph<Element, DefaultEdge> dependencyGraph() { return new AsUnmodifiableGraph<>(dependencies); }
 
-    public void exclude(Set<Element> excluded) {
-        dependencies.removeAllVertices(excluded);
+    public void exclude(Element excluded) {
+        dependencies.removeVertex(excluded);
     }
 }
