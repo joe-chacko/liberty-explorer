@@ -10,23 +10,24 @@
  *     IBM Corporation - initial API and implementation
  * =============================================================================
  */
-package io.openliberty.inspect;
+package io.openliberty.inspect.feature;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static java.util.Collections.unmodifiableMap;
 
-class ValueElement {
+class ManifestValueEntry {
     private static final String TEXT = "([^\";\\\\]|\\\\.)+";
     private static final String QUOTED_TEXT = "\"([^\\\\\"]|\\\\.)+\"";
     private static final Pattern ATOM_PATTERN = Pattern.compile(String.format("(%s|%s)+", TEXT, QUOTED_TEXT));
     final String id;
     private final Map<? extends String, String> qualifiers;
 
-    ValueElement(String text) {
+    ManifestValueEntry(String text) {
         Matcher m = ATOM_PATTERN.matcher(text);
         if (!m.find()) throw new Error("Unable to parse manifest value into constituent parts: " + text);
         this.id = m.group();
@@ -48,6 +49,15 @@ class ValueElement {
     String getQualifier(String key) {
         return qualifiers.get(key);
     }
+
+    String getQualifierOrDefault(String key, String defaultValue) {
+        return qualifiers.getOrDefault(key, defaultValue);
+    }
+
+    Optional<String> getQualifierIfPresent(String key) {
+        return Optional.ofNullable(qualifiers.get(key));
+    }
+
 
     public String toString() {
         return String.format("%88s : %s", id, qualifiers);

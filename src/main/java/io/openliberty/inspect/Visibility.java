@@ -12,6 +12,8 @@
  */
 package io.openliberty.inspect;
 
+import io.openliberty.inspect.feature.Feature;
+
 import java.util.function.Predicate;
 
 @SuppressWarnings("unused")

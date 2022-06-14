@@ -10,7 +10,7 @@
  *     IBM Corporation - initial API and implementation
  * =============================================================================
  */
-package io.openliberty.inspect;
+package io.openliberty.inspect.feature;
 
 import java.util.Optional;
 import java.util.function.Function;
@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 @SuppressWarnings("unused")
-enum Key implements Function<Attributes, String>, Predicate<Attributes> {
+enum ManifestKey implements Function<Attributes, String>, Predicate<Attributes> {
     CREATED_BY("Created-By"),
     IBM_API_PACKAGE("IBM-API-Package"),
     IBM_API_SERVICE("IBM-API-Service"),
@@ -59,7 +59,7 @@ enum Key implements Function<Attributes, String>, Predicate<Attributes> {
     private static final Pattern ELEMENT_PATTERN = Pattern.compile("(([^\",\\\\]|\\\\.)+|\"([^\\\\\"]|\\\\.)*+\")+");
     final Attributes.Name name;
 
-    Key(String name) {
+    ManifestKey(String name) {
         this.name = new Attributes.Name(name);
     }
 
@@ -75,13 +75,13 @@ enum Key implements Function<Attributes, String>, Predicate<Attributes> {
         return Optional.ofNullable(feature.getValue(name));
     }
 
-    Stream<ValueElement> parseValues(Attributes feature) {
+    Stream<ManifestValueEntry> parseValues(Attributes feature) {
         return get(feature)
                 .map(ELEMENT_PATTERN::matcher)
                 .map(Matcher::results)
                 .orElse(Stream.empty())
                 .map(MatchResult::group)
-                .map(ValueElement::new);
+                .map(ManifestValueEntry::new);
     }
 
     public String apply(Attributes feature) {

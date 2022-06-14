@@ -31,7 +31,6 @@ import picocli.CommandLine.PropertiesDefaultProvider;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -40,6 +39,7 @@ import static io.openliberty.explore.LibertyExplorer.Direction.FORWARD;
 import static io.openliberty.explore.LibertyExplorer.Direction.REVERSE;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.unmodifiableSet;
+import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Collectors.toUnmodifiableList;
@@ -48,13 +48,13 @@ import static java.util.stream.Collectors.toUnmodifiableSet;
 @Command(
         name = "lx",
         description = "Liberty installation eXplorer",
-        subcommands = {GraphCommand.class, HelpCommand.class},
+        subcommands = {ListCommand.class, GraphCommand.class, HelpCommand.class},
         defaultValueProvider = PropertiesDefaultProvider.class
 )
-public class LibertyExplorer implements Callable<Integer> {
-
+public class LibertyExplorer {
     public static final String INCLUDE_CONTAINED_BY_PREFIX = "**/";
     public static final String INCLUDE_CONTAINED_SUFFIX = "/**";
+    private List<String> patterns;
 
     public static void main(String[] args) {
         LibertyExplorer explorer = new LibertyExplorer();
@@ -71,67 +71,27 @@ public class LibertyExplorer implements Callable<Integer> {
     @Option(names = {"-v", "--verbose"})
     boolean verbose;
 
-    List<Query> queries;
-
+    private List<Query> queries;
     private Set<Element> primaryMatches;
     private Set<Element> interpolatedMatches;
     private Graph<Element, DefaultEdge> subgraph;
 
-    @Override
-    public Integer call() {
-        System.out.println("Hello, world.");
-        return 0;
-    }
-
-    boolean isPrimary(Element e) { return primaryMatches.contains(e); }
-    Graph<Element, DefaultEdge> subgraph() {return subgraph;}
+    boolean isPrimary(Element e) { return primaryResults().contains(e); }
 
     void init(List<String> patterns) {
         if (verbose) System.err.println("Patterns: " + patterns.stream().collect(Collectors.joining("' '", "'", "'")));
-        // create query objects from patterns
-        queries = patterns.stream()
-                .map(Query::new)
-                .collect(toUnmodifiableList());
-
-        excludeElements();
-
-        // work with remaining features
-        if (verbose) System.err.println("Include patterns:");
-        var includers = this.queries.stream()
-                .filter(not(Query::isNegatory))
-                .peek(q -> {if (verbose) System.err.println("\t" + q);})
-                .collect(toUnmodifiableSet());
-
-        // find the initial set of features (not including deps)
-        primaryMatches = includers.stream()
-                .map(Query::initialMatches)
-                .flatMap(Set::stream)
-                .collect(toUnmodifiableSet());
-
-        // construct graph of initial features, including paths between them
-        var allPaths = new AllDirectedPaths<>(liberty.dependencyGraph());
-        interpolatedMatches = allPaths.getAllPaths(primaryMatches, primaryMatches, true, null)
-                .stream()
-                .map(GraphPath::getVertexList)
-                .flatMap(List::stream)
-                .collect(toUnmodifiableSet());
-
-        subgraph = new AsSubgraph<>(liberty.dependencyGraph(), interpolatedMatches);
-
-        subgraph = includers.stream()
-                .map(Query::subgraph)
-                .collect(toUnionWith(subgraph));
+        this.patterns = patterns;
+        removeExcludedElements();
     }
 
-    void excludeElements() {
+    void removeExcludedElements() {
         // remove excluded features (and associated edges) from graph
         if (verbose) System.err.println("Exclude patterns:");
-        queries.stream()
+        queries().stream()
                 .filter(Query::isNegatory)
                 .distinct()
                 .peek(q -> {if (verbose) System.err.println("\t" + q);} )
-                .map(Query::allMatches)
-                .flatMap(Set::stream)
+                .flatMap(Query::allMatches)
                 .distinct()
                 .peek(e -> {if (verbose) System.err.println("Excluding: " + e);})
                 .forEach(liberty::exclude);
@@ -156,6 +116,58 @@ public class LibertyExplorer implements Callable<Integer> {
         return unmodifiableSet(results);
     }
 
+    private List<Query> queries() {
+        requireNonNull(patterns,"Explorer not yet initialised with patterns.");
+        if (null == queries) queries = patterns.stream().map(Query::new).collect(toUnmodifiableList());
+        return queries;
+    }
+
+    Set<Element> primaryResults() {
+        if (null == primaryMatches) {
+            // find the initial set of elements (not including deps)
+            if (verbose) System.err.println("Include patterns:");
+            primaryMatches = queries().stream()
+                    .filter(not(Query::isNegatory))
+                    .peek(q -> {if (verbose) System.err.println("\t" + q);})
+                    .distinct()
+                    .map(Query::initialMatches)
+                    .flatMap(Set::stream)
+                    .collect(toUnmodifiableSet());
+        }
+        return primaryMatches;
+    }
+
+    Set<Element> allResults() {
+        return queries().stream()
+                .filter(not(Query::isNegatory))
+                .distinct()
+                .flatMap(Query::allMatches)
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    Set<Element> interpolatedResults() {
+        if (null == interpolatedMatches) interpolatedMatches = new AllDirectedPaths<>(liberty.dependencyGraph())
+                .getAllPaths(primaryResults(), primaryResults(), true, null)
+                .stream()
+                .map(GraphPath::getVertexList)
+                .flatMap(List::stream)
+                .collect(toUnmodifiableSet());
+        return interpolatedMatches;
+    }
+
+    Graph<Element, DefaultEdge> subgraph() {
+        if (null == subgraph) {
+            subgraph = new AsSubgraph<>(liberty.dependencyGraph(), interpolatedResults());
+            subgraph = queries().stream()
+                    .filter(not(Query::isNegatory))
+                    .peek(q -> {if (verbose) System.err.println("\t" + q);})
+                    .distinct()
+                    .map(Query::subgraph)
+                    .collect(toUnionWith(subgraph));
+        }
+        return subgraph;
+    }
+
     enum Direction {FORWARD, REVERSE}
 
     private class Query {
@@ -163,9 +175,9 @@ public class LibertyExplorer implements Callable<Integer> {
         private final boolean includeContained;
         private final boolean includeContainedBy;
         private final String pattern;
-        private final Set<Element> initialMatches;
-        private final Set<Element> contained;
-        private final Set<Element> containedBy;
+        private Set<Element> initialMatches;
+        private Set<Element> contained;
+        private Set<Element> containedBy;
 
         Query(final String pattern) {
             this.isNegatory = pattern.startsWith("!");
@@ -175,31 +187,40 @@ public class LibertyExplorer implements Callable<Integer> {
             this.includeContained = pattern.endsWith(INCLUDE_CONTAINED_SUFFIX);
             var end = includeContained ? pattern.length() - INCLUDE_CONTAINED_SUFFIX.length() : pattern.length();
             this.pattern = pattern.substring(begin, end);
-            this.initialMatches = liberty.findMatches(this.pattern).collect(toUnmodifiableSet());
-            this.contained = includeContained ? findConnectedEdges(initialMatches, FORWARD) : emptySet();
-            this.containedBy = includeContainedBy ? findConnectedEdges(initialMatches, REVERSE) : emptySet();
         }
 
         boolean isNegatory() { return isNegatory; }
 
-        Set<Element> initialMatches() { return initialMatches; }
+        Set<Element> initialMatches() {
+            if (null == initialMatches) initialMatches = liberty.findMatches(this.pattern).collect(toUnmodifiableSet());
+            return initialMatches;
+        }
 
-        Set<Element> allMatches() {
-            return Stream.of(initialMatches, contained, containedBy)
-                    .flatMap(Set::stream)
-                    .collect(toUnmodifiableSet());
+        Stream<Element> allMatches() {
+            return Stream.of(initialMatches(), contained(), containedBy())
+                    .flatMap(Set::stream);
         }
 
         Graph<Element, DefaultEdge> subgraph() {
             return new AsGraphUnion<>(
-                    new AsSubgraph<>(liberty.dependencyGraph(), contained),
-                    new AsSubgraph<>(liberty.dependencyGraph(), containedBy)
+                    new AsSubgraph<>(liberty.dependencyGraph(), contained()),
+                    new AsSubgraph<>(liberty.dependencyGraph(), containedBy())
             );
         }
 
         @Override
         public String toString() {
             return (includeContainedBy ? "**/" : "") + pattern + (includeContained ? "/**" : "");
+        }
+
+        public Set<Element> contained() {
+            if (null == contained) contained = includeContained ? findConnectedEdges(initialMatches, FORWARD) : emptySet();
+            return contained;
+        }
+
+        public Set<Element> containedBy() {
+            if (null == containedBy) containedBy = includeContainedBy ? findConnectedEdges(initialMatches, REVERSE) : emptySet();
+            return containedBy;
         }
     }
 }

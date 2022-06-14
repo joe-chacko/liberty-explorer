@@ -13,25 +13,39 @@
 
 package io.openliberty.inspect;
 
+import io.openliberty.inspect.feature.Feature;
+import org.apache.commons.collections4.Bag;
+import org.apache.commons.collections4.MultiValuedMap;
+import org.apache.commons.collections4.Trie;
+import org.apache.commons.collections4.bag.HashBag;
+import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
+import org.apache.commons.collections4.trie.PatriciaTrie;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.AsUnmodifiableGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleDirectedGraph;
 
-import java.io.IOError;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.nio.file.Files.isDirectory;
+import static java.util.Comparator.comparing;
 import static java.util.Objects.requireNonNull;
-import static java.util.function.Predicate.not;
 
 public class Catalog {
     public static SimpleDirectedGraph<Element, DefaultEdge> newGraph() {
@@ -41,49 +55,155 @@ public class Catalog {
     private final Map<String, Element> elements = new HashMap<>();
     // Wrap (downcased) feature names and shortnames as Path objects
     // to allow use of java.nio.file.FileSystem's built-in glob matching
-    private final Map<Path, Element> index = new HashMap<>();
+    private final MultiValuedMap<Path, Element> index = new HashSetValuedHashMap<>();
     private final SimpleDirectedGraph<Element, DefaultEdge> dependencies = newGraph();
 
-    public Catalog(String libertyRoot) { this(validate(Paths.get(libertyRoot), "Not a valid directory: ")); }
+    public Catalog(String libertyRoot) throws IOException {
+        this(validate(Paths.get(libertyRoot), "Not a valid directory: "));
+    }
 
-    private Catalog(Path libertyRoot) {
+    private Catalog(Path libertyRoot) throws IOException {
         Path libDir = validate(libertyRoot.resolve("lib"), "No lib subdirectory found: ");
+        // parse bundles
+        Files.list(libDir)
+                .filter(Files::isRegularFile)
+                .filter(p -> p.toString().endsWith(".jar"))
+                .map(Bundle::new)
+                .forEach(this::initElement);
         Path featureDir = validate(libertyRoot.resolve("lib/features"), "No feature subdirectory found: ");
         // parse feature manifests
-        try (var paths = Files.list(featureDir)) {
-            paths
-                    .filter(Files::isRegularFile)
-                    .filter(p -> p.toString().endsWith(".mf"))
-                    .map(Feature::new)
-                    .forEach(this::init);
-        } catch (IOException e) {
-            throw new IOError(e);
-        }
-
+        Files.list(featureDir)
+                .filter(Files::isRegularFile)
+                .filter(p -> p.toString().endsWith(".mf"))
+                .map(Feature::new)
+                .forEach(this::initElement);
         // add the features to the graph
         elements.values().forEach(dependencies::addVertex);
+        // compute short unique names for each element
+        computeShortNames();
         // add the feature dependencies to the graph
-        elements.values().forEach(this::initDeps);
+        elements.values().forEach(this::initDependencies);
     }
 
-    private void init(Element e) {
-        var oldValue = elements.put(e.fullName(), e);
-        if (null != oldValue) System.err.printf("WARNING: duplicate short names found for features: '%s' and '%s'%n", e, oldValue);
-        index.put(Paths.get(e.fullName().toLowerCase()), e);
+    private void initElement(Element e) {
+        // add to element map
+        elements.put(e.symbolicName(), e);
+        // add to graph
         dependencies.addVertex(e);
-        e.shortName()
+        // add to index using full name and short name (if present)
+        e.allNames()
                 .map(String::toLowerCase)
                 .map(Paths::get)
-                .map(p -> index.put(p, e))
-                .filter(not(e::equals)) // ignore duplicate names for the same feature (i.e. it had the same symbolic and shortname)
-                .ifPresent(f2 -> System.err.printf("WARNING: duplicate short names found for features: '%s' and '%s'%n", e, f2));
+                .forEach(k -> index.put(k, e));
     }
 
-    private void initDeps(Element f1) {
-        f1.containedElements()
-                .map(elements::get)
-                .filter(Objects::nonNull) // ignore unknown features TODO: try tolerated versions instead
-                .forEach(f2 -> dependencies.addEdge(f1, f2));
+    private void computeShortNames() {
+//        // create trie with reverse keys
+//        Trie<String, Element> reverseKeyTrie = new PatriciaTrie<>();
+//        elements.forEach((k, v) -> reverseKeyTrie.put(reverse(k), v));
+//
+//        Trie<String, Element> trie3 = findShortestUniquePrefixKeysAndReverseThem(reverseKeyTrie);
+//        trie3.forEach((k,v) -> {
+//            var n = v.symbolicName();
+//            var i = n.indexOf(k);
+//            var prefix = n.substring(0, i);
+//            var suffix = n.substring(i + k.length());
+//            System.err.println("prefix: " + prefix);
+//            System.err.println("suffix: " + suffix);
+//        });
+    }
+
+    public static void main(String[] args) throws Exception {
+        NameUtil.prefixes("io.openliberty.jakarta.3.0_1.0.63.jar")
+                .forEach(System.out::println);
+        System.out.println();
+        System.out.println();
+        System.out.println();
+        Path p = Paths.get("/Users/chackoj/wlp/lib");
+        var names = Files.list(p)
+                .filter(Files::isRegularFile)
+                .map(Path::getFileName)
+                .map(Path::toString)
+                .filter(s -> s.endsWith(".jar"))
+                .collect(Collectors.toUnmodifiableSet());
+        NameUtil.shortenNames(names)
+                .entrySet()
+                .stream()
+                .sorted(comparing(Entry::getValue))
+                .forEach(e -> System.out.println(e.getValue()));
+    }
+
+
+    enum NameUtil {
+        ;
+        private static Pattern PREFIX_DELIMITER = Pattern.compile("(?<!\\d)\\.|(?<=\\d\\.\\d)\\.|_|\\.(?!\\d)");
+        private static Stream<String> prefixes(String name) {
+            var m = PREFIX_DELIMITER.matcher(name);
+            var prefixes = new ArrayList<String>();
+            if (m.find()) {
+                prefixes.add(name.substring(0, m.start()));
+                while (m.find(m.end())) {
+                    prefixes.add(name.substring(0, m.start()));
+                }
+            }
+            prefixes.add(name);
+            return prefixes.stream();
+        }
+
+        private static Map<String, String> shortenNames(Set<String> names) {
+            var trie = new PatriciaTrie<String>();
+            names.stream().forEach(name -> {
+                // remove some common prefixes
+                var shorterName = name
+                        .replaceFirst("^com\\.ibm\\.ws\\.", "ws ")
+                        .replaceFirst("^io\\.openliberty\\.", "ol ")
+                        .replaceFirst("^(ws|ol) (com|org|net)\\.([^.]+)\\.", "$1 $3 ")
+                        .replaceFirst("^com\\.ibm\\.websphere\\.(app(server|client)\\.)?", "websphere $1 ");
+                // add the shortened name to a trie
+                var oldName = trie.put(shorterName, name);
+                if (null != oldName) {
+                    // this is a bug that must be fixed in this code - bail out
+                    throw new Error("Initial shortening of " + oldName + " and " + name + " both resulted in " + shorterName);
+                }
+            });
+            var map = new TreeMap<String, String>();
+            trie.forEach((k, v) -> map.put(v, minPrefix(k, trie)));
+
+            // fudge 1: try chomping substrings and check for conflicts
+            var pattern = "apache\\.";
+            var strings = map.values();
+            Bag<String> bag = strings.stream()
+                    .map(s -> s.replaceFirst(pattern, ""))
+                    .collect(HashBag::new, HashBag::add, HashBag::addAll);
+            map.entrySet().stream()
+//                    .filter(e -> e.getValue())
+                    .forEach(e -> {});
+
+
+            return Collections.unmodifiableMap(map);
+        }
+
+        private static String minPrefix(String key, Trie<String, ?> trie) {
+            var smallestSize = trie.prefixMap(key).size();
+            Predicate<String> isMinimal = s -> trie.prefixMap(s).size() == smallestSize;
+            try {
+                return prefixes(key)
+                        .filter(isMinimal)
+                        .findFirst()
+                        .orElseThrow(Exception::new);
+            } catch (Exception ex) {
+                System.err.println("Failed to find min prefix for " + key);
+                System.err.println(trie.prefixMap(key));
+                ex.printStackTrace();
+                return key;
+            }
+        }
+    }
+
+
+    private void initDependencies(Element e) {
+        e.findDependencies(elements.values())
+                .forEach(d -> dependencies.addEdge(e, d));
     }
 
     private static Path validate(Path path, String errorMessage) {
@@ -97,6 +217,7 @@ public class Catalog {
         return index.keySet().stream()
                 .filter(FileSystems.getDefault().getPathMatcher(pattern)::matches)
                 .map(index::get)
+                .flatMap(Collection::stream)
                 .filter(dependencies::containsVertex)
                 .sorted()
                 .distinct();
@@ -105,6 +226,6 @@ public class Catalog {
     public Graph<Element, DefaultEdge> dependencyGraph() { return new AsUnmodifiableGraph<>(dependencies); }
 
     public void exclude(Element excluded) {
-        dependencies.removeVertex(excluded);
+        var removed = dependencies.removeVertex(excluded);
     }
 }

@@ -12,21 +12,38 @@
  */
 package io.openliberty.inspect;
 
-import java.util.Optional;
+import org.osgi.framework.Version;
+
+import java.util.Collection;
+import java.util.Objects;
 import java.util.stream.Stream;
 
-public interface Element extends Comparable<Element> {
-    String fullName();
-    String name();
-    default Optional<String> shortName() { return Optional.empty(); }
+import static java.util.stream.Stream.concat;
 
+public interface Element extends Comparable<Element> {
+    String symbolicName();
+    String name();
+    Version version();
+    /** Returns a stream of other names for this element */
+    Stream<String> aka();
+    /** Returns a stream of <em>all</em> the names for this element */
+    default Stream<String> allNames() {
+        return concat(Stream.of(symbolicName(), name()), aka())
+                .filter(Objects::nonNull)
+                .distinct();
+    }
     default Visibility visibility() { return Visibility.PRIVATE; }
-    default Stream<String> containedElements() { return Stream.empty(); }
+
     default String simpleName() {
         return name()
-                .replaceFirst("^(com.ibm.ws|io.openliberty).(com\\.|org\\.|net\\.)?", "")
                 .replaceFirst("^com.ibm.websphere.app(server|client).", "")
                 .replaceFirst("^com.ibm.websphere.", "")
-                .replaceFirst("^io.openliberty.", "");
+                .replaceFirst("^(com.ibm.ws|io.openliberty).(com\\.|org\\.|net\\.)?", "")
+                .replaceFirst("^io.openliberty.", "")
+                .replaceAll("(\\D)\\.", "$1 ")
+                .replaceAll("\\.(\\D)", " $1")
+                .replaceAll("_", " ");
     }
+
+    default Stream<Element> findDependencies(Collection<Element> elements) { return Stream.empty(); }
 }
