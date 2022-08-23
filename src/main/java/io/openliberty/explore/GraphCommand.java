@@ -21,9 +21,13 @@ import org.jgrapht.nio.dot.DOTExporter;
 import picocli.CommandLine.Command;
 
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.joining;
 import static org.jgrapht.nio.DefaultAttribute.createAttribute;
 
 @Command(
@@ -54,12 +58,18 @@ public class GraphCommand extends QueryCommand {
     }
 
     private Map<String, Attribute> getDotAttributes(Element element) {
+        List<String> styles = new ArrayList<>();
         Map<String, Attribute> result = new HashMap<>();
         result.put("shape", shape(element));
         if (explorer().isPrimary(element)) {
             result.put("bgcolor", SUBJECT_FILL_COLOR);
-            result.put("style", createAttribute("filled"));
+            styles.add("filled");
+            styles.add("bold");
         }
+        if (element.isAutoFeature()) {
+            styles.add("dashed");
+        }
+        result.put("style", createAttribute(styles.stream().collect(joining(","))));
         return result;
     }
 }

@@ -76,6 +76,8 @@ public final class Feature implements Element {
     public Version version() { return version; }
     @Override
     public Stream<String> aka() { return Stream.of(shortName); }
+    @Override
+    public boolean isAutoFeature() { return isAutoFeature; }
 
     @Override
     public Stream<Element> findDependencies(Collection<Element> elements) {

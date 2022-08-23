@@ -33,6 +33,7 @@ public interface Element extends Comparable<Element> {
                 .distinct();
     }
     default Visibility visibility() { return Visibility.PRIVATE; }
+    default boolean isAutoFeature() { return false; }
 
     default String simpleName() {
         return name()
