@@ -88,7 +88,7 @@ public class LibertyExplorer {
         // remove excluded features (and associated edges) from graph
         if (verbose) System.err.println("Exclude patterns:");
         queries().stream()
-                .filter(Query::isNegatory)
+                .filter(Query::isExcludeQuery)
                 .distinct()
                 .peek(q -> {if (verbose) System.err.println("\t" + q);} )
                 .flatMap(Query::allMatches)
@@ -127,7 +127,7 @@ public class LibertyExplorer {
             // find the initial set of elements (not including deps)
             if (verbose) System.err.println("Include patterns:");
             primaryMatches = queries().stream()
-                    .filter(not(Query::isNegatory))
+                    .filter(Query::isIncludeQuery)
                     .peek(q -> {if (verbose) System.err.println("\t" + q);})
                     .distinct()
                     .map(Query::initialMatches)
@@ -139,7 +139,7 @@ public class LibertyExplorer {
 
     Set<Element> allResults() {
         return queries().stream()
-                .filter(not(Query::isNegatory))
+                .filter(Query::isIncludeQuery)
                 .distinct()
                 .flatMap(Query::allMatches)
                 .collect(Collectors.toUnmodifiableSet());
@@ -159,7 +159,7 @@ public class LibertyExplorer {
         if (null == subgraph) {
             subgraph = new AsSubgraph<>(liberty.dependencyGraph(), interpolatedResults());
             subgraph = queries().stream()
-                    .filter(not(Query::isNegatory))
+                    .filter(Query::isIncludeQuery)
                     .peek(q -> {if (verbose) System.err.println("\t" + q);})
                     .distinct()
                     .map(Query::subgraph)
@@ -171,7 +171,7 @@ public class LibertyExplorer {
     enum Direction {FORWARD, REVERSE}
 
     private class Query {
-        private final boolean isNegatory;
+        private final boolean isExcludeQuery;
         private final boolean includeContained;
         private final boolean includeContainedBy;
         private final String pattern;
@@ -180,8 +180,8 @@ public class LibertyExplorer {
         private Set<Element> containedBy;
 
         Query(final String pattern) {
-            this.isNegatory = pattern.startsWith("!");
-            var begin = isNegatory ? 1 : 0;
+            this.isExcludeQuery = pattern.startsWith("!");
+            var begin = isExcludeQuery ? 1 : 0;
             this.includeContainedBy = pattern.startsWith(INCLUDE_CONTAINED_BY_PREFIX, begin);
             if (includeContainedBy) begin += INCLUDE_CONTAINED_BY_PREFIX.length();
             this.includeContained = pattern.endsWith(INCLUDE_CONTAINED_SUFFIX);
@@ -189,7 +189,8 @@ public class LibertyExplorer {
             this.pattern = pattern.substring(begin, end);
         }
 
-        boolean isNegatory() { return isNegatory; }
+        boolean isExcludeQuery() { return isExcludeQuery; }
+        boolean isIncludeQuery() { return !isExcludeQuery; }
 
         Set<Element> initialMatches() {
             if (null == initialMatches) initialMatches = liberty.findMatches(this.pattern).collect(toUnmodifiableSet());

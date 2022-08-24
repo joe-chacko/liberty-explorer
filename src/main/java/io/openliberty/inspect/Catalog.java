@@ -225,7 +225,5 @@ public class Catalog {
 
     public Graph<Element, DefaultEdge> dependencyGraph() { return new AsUnmodifiableGraph<>(dependencies); }
 
-    public void exclude(Element excluded) {
-        var removed = dependencies.removeVertex(excluded);
-    }
+    public void exclude(Element excluded) { dependencies.removeVertex(excluded); }
 }
