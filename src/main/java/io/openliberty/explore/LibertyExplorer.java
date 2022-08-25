@@ -28,6 +28,7 @@ import picocli.CommandLine.HelpCommand;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.PropertiesDefaultProvider;
 
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -59,21 +60,23 @@ public class LibertyExplorer {
     public static void main(String[] args) {
         LibertyExplorer explorer = new LibertyExplorer();
         CommandLine commandLine = new CommandLine(explorer);
-        commandLine.registerConverter(Catalog.class, Catalog::new);
         int exitCode = commandLine.execute(args);
         System.exit(exitCode);
     }
 
     @Option(names = { "-d", "--directory"}, defaultValue = ".",
             description = "Liberty root directory (defaults to the working directory)")
-    Catalog liberty;
+    Path libertyRoot;
 
-    @Option(names = {"-v", "--verbose"})
+    @Option(names = {"-v", "--verbose"},
+            description = "Provide more detailed output")
     boolean verbose;
 
-    @Option(names = {"-j", "--show-jars"})
-    boolean showJars;
+    @Option(names = {"-b", "--include-bundles"},
+            description = "Include bundles in the dependency analysis")
+    boolean includeBundles;
 
+    Catalog liberty;
     private List<Query> queries;
     private Set<Element> primaryMatches;
     private Set<Element> interpolatedMatches;
@@ -81,7 +84,8 @@ public class LibertyExplorer {
 
     boolean isPrimary(Element e) { return primaryResults().contains(e); }
 
-    void init(List<String> patterns) {
+    void init(List<String> patterns) throws Exception {
+        liberty = new Catalog(libertyRoot, includeBundles);
         if (verbose) System.err.println("Patterns: " + patterns.stream().collect(Collectors.joining("' '", "'", "'")));
         this.patterns = patterns;
         removeExcludedElements();

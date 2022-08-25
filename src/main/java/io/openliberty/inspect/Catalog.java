@@ -58,15 +58,11 @@ public class Catalog {
     private final MultiValuedMap<Path, Element> index = new HashSetValuedHashMap<>();
     private final SimpleDirectedGraph<Element, DefaultEdge> dependencies = newGraph();
 
-    public Catalog(String libertyRoot) throws IOException {
-        this(Paths.get(libertyRoot));
-    }
-
-    private Catalog(Path libertyRoot) throws IOException {
+    public Catalog(Path libertyRoot, boolean includeBundles) throws IOException {
         validate(libertyRoot, "Not a valid directory: ");
         Path libDir = validate(libertyRoot.resolve("lib"), "No lib subdirectory found: ");
         // parse bundles
-        Files.list(libDir)
+        if (includeBundles) Files.list(libDir)
                 .filter(Files::isRegularFile)
                 .filter(p -> p.toString().endsWith(".jar"))
                 .map(Bundle::new)
