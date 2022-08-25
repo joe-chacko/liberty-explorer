@@ -25,7 +25,9 @@ import picocli.CommandLine.Option;
 
 import java.util.HashMap;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.barfuin.texttree.api.CycleProtection.PruneRepeating;
 import static org.barfuin.texttree.api.style.TreeStyles.ASCII_ROUNDED;
@@ -92,10 +94,12 @@ public class TreeCommand extends QueryCommand {
         opts.setStyle(style.treeStyle);
         opts.setColorScheme(new DefaultColorScheme());
         final TextTree TEXT_TREE = TextTree.newInstance(opts);
-
-
-        System.out.println(TEXT_TREE.render(root));
+        String render = TEXT_TREE.render(root);
+        Stream.of(render.split(System.lineSeparator()))
+                .map(this::moveScopeToStartOfString)
+                .forEach(System.out::println);
     }
+
 
 
     private void xxx(Element element) {

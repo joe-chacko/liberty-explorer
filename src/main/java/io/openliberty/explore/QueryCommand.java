@@ -22,6 +22,7 @@ import picocli.CommandLine.ParentCommand;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
 abstract class QueryCommand implements Callable<Integer> {
     @ParentCommand
@@ -62,25 +63,30 @@ abstract class QueryCommand implements Callable<Integer> {
     private DisplayOption display = DisplayOption.normal;
 
     @Option(names = {"-s", "--scope"}, description = "Display additional scope information:" +
-            "\n\t +++ - public features" +
-            "\n\t === - protected features" +
-            "\n\t --- - private features" +
-            "\n\t -A- - auto-features" +
-            "\n\t -b- - bundles" +
-            "\n\t ??? - unknown")
+            "\n\t [+] - public features" +
+            "\n\t [=] - protected features" +
+            "\n\t [-] - private features" +
+            "\n\t [a] - auto-features" +
+            "\n\t [b] - bundles" +
+            "\n\t [?] - unknown")
     private boolean scope = true;
 
     private String prefix(Element e) {
         if (!scope) return "";
-        if (e instanceof Bundle) return "-b- ";
-        if (e.isAutoFeature()) return "-a- ";
+        if (e instanceof Bundle) return "[b] ";
+        if (e.isAutoFeature()) return "[a] ";
         switch(e.visibility()) {
-            case PUBLIC: return "+++ ";
-            case PROTECTED: return "=== ";
-            case PRIVATE: return "--- ";
-            default: return "??? ";
+            case PUBLIC: return "[+] ";
+            case PROTECTED: return "[=] ";
+            case PRIVATE: return "[-] ";
+            default: return "[?] ";
         }
     }
+
+    String moveScopeToStartOfString(String line) {
+        return line.replaceFirst("^(.*)(\\[[-ab+=?]\\] )", "$2$1");
+    }
+
 
     String displayName(Element e) {
         return prefix(e) + display.getName(e);
