@@ -40,7 +40,7 @@ public final class Bundle implements Element {
             this.jar = new JarFile(path.toFile());
             this.manifest = jar.getManifest();
             this.attributes = manifest.getMainAttributes();
-            this.symbolicName = attributes.getValue(BUNDLE_SYMBOLICNAME);
+            this.symbolicName = attributes.getValue(BUNDLE_SYMBOLICNAME).replaceFirst(";.*","");
             this.name = attributes.getValue(BUNDLE_NAME);
             this.version = Version.parseVersion(attributes.getValue(BUNDLE_VERSION));
         } catch (Exception e) {
