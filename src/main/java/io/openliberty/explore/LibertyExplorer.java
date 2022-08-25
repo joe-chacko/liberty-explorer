@@ -48,7 +48,7 @@ import static java.util.stream.Collectors.toUnmodifiableSet;
 @Command(
         name = "lx",
         description = "Liberty installation eXplorer",
-        subcommands = {ListCommand.class, GraphCommand.class, HelpCommand.class},
+        subcommands = {ListCommand.class, GraphCommand.class, TreeCommand.class, HelpCommand.class},
         defaultValueProvider = PropertiesDefaultProvider.class
 )
 public class LibertyExplorer {
