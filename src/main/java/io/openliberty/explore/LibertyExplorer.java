@@ -71,6 +71,9 @@ public class LibertyExplorer {
     @Option(names = {"-v", "--verbose"})
     boolean verbose;
 
+    @Option(names = {"-j", "--show-jars"})
+    boolean showJars;
+
     private List<Query> queries;
     private Set<Element> primaryMatches;
     private Set<Element> interpolatedMatches;

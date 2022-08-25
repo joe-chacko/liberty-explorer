@@ -59,10 +59,11 @@ public class Catalog {
     private final SimpleDirectedGraph<Element, DefaultEdge> dependencies = newGraph();
 
     public Catalog(String libertyRoot) throws IOException {
-        this(validate(Paths.get(libertyRoot), "Not a valid directory: "));
+        this(Paths.get(libertyRoot));
     }
 
     private Catalog(Path libertyRoot) throws IOException {
+        validate(libertyRoot, "Not a valid directory: ");
         Path libDir = validate(libertyRoot.resolve("lib"), "No lib subdirectory found: ");
         // parse bundles
         Files.list(libDir)
