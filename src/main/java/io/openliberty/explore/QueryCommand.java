@@ -12,17 +12,24 @@
  */
 package io.openliberty.explore;
 
+import io.openliberty.inspect.Element;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 import picocli.CommandLine.ParentCommand;
 
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 
 abstract class QueryCommand implements Callable<Integer> {
     @ParentCommand
     private LibertyExplorer explorer;
     @Parameters(arity = "1..*", description = "one or more glob patterns to match features by name")
     private List<String> patterns;
+
+    QueryCommand(DisplayOption defaultDisplay) {
+        display = defaultDisplay;
+    }
 
     @Override
     public final Integer call() throws Exception {
@@ -34,4 +41,25 @@ abstract class QueryCommand implements Callable<Integer> {
     abstract void execute() throws Exception;
 
     LibertyExplorer explorer() { return explorer; }
+
+    @SuppressWarnings("unused")
+    enum DisplayOption {
+        normal(Element::toString),
+        simple(Element::simpleName),
+        symbolic(Element::symbolicName),
+        path(Element::pathName),
+        file(Element::fileName),
+        full(Element::name)
+        ;
+        final Function<Element, String> fun;
+        DisplayOption(Function<Element, String> fun) { this.fun = fun; }
+        String getName(Element e) { return fun.apply(e); }
+    }
+
+    @Option(names = {"--display", "-d"}, description = "Control how elements are displayed: ${COMPLETION-CANDIDATES}")
+    private DisplayOption display = DisplayOption.normal;
+
+    String displayName(Element e) {
+        return display.getName(e);
+    }
 }

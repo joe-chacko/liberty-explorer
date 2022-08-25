@@ -25,7 +25,6 @@ import picocli.CommandLine.Option;
 
 import java.util.HashMap;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.barfuin.texttree.api.CycleProtection.PruneRepeating;
@@ -42,7 +41,7 @@ public class TreeCommand extends QueryCommand {
         final Element element;
 
         TreeNode(Element e) {
-            super(display.getName(e));
+            super(displayName(e));
             this.element = e;
         }
     }
@@ -56,25 +55,10 @@ public class TreeCommand extends QueryCommand {
         Style(TreeStyle treeStyle) { this.treeStyle = treeStyle; }
     }
 
-    @SuppressWarnings("unused")
-    enum DisplayName {
-        normal(Element::toString),
-        simple(Element::simpleName),
-        symbolic(Element::symbolicName),
-        path(Element::pathName),
-        file(Element::fileName),
-        full(Element::name)
-        ;
-        final Function<Element, String> fun;
-        DisplayName(Function<Element, String> fun) { this.fun = fun; }
-        String getName(Element e) { return fun.apply(e); }
-    }
-
     @Option(names = {"--tree-style", "-t"}, description = "Choose a tree style from the following: ${COMPLETION-CANDIDATES}")
     Style style = Style.unicode;
 
-    @Option(names = {"--display", "-d"}, description = "Control how elements are displayed: ${COMPLETION-CANDIDATES}")
-    DisplayName display = DisplayName.normal;
+    TreeCommand() {super(DisplayOption.simple);}
 
     void execute() {
         var graph = explorer().subgraph();

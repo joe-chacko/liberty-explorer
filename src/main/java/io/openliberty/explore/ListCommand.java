@@ -19,7 +19,9 @@ import picocli.CommandLine.Command;
         description = "List matching features"
 )
 public class ListCommand extends QueryCommand {
+    ListCommand() { super(DisplayOption.normal);}
+
     void execute() {
-        explorer().allResults().stream().sorted().forEach(System.out::println);
+        explorer().allResults().stream().map(this::displayName).sorted().forEach(System.out::println);
     }
 }

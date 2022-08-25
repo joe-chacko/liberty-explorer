@@ -35,10 +35,19 @@ import static org.jgrapht.nio.DefaultAttribute.createAttribute;
         description = "Produce a graph of selected features"
 )
 public class GraphCommand extends QueryCommand {
-    public final Attribute SUBJECT_FILL_COLOR = createAttribute("gray95");
+    public static final Attribute SUBJECT_FILL_COLOR = createAttribute("gray95");
+
+    GraphCommand() { super(DisplayOption.simple); }
+
+    @Override
+    String displayName(Element e) {
+        return '"'
+                + super.displayName(e).replaceAll("\\s", "\\\\n")
+                + '"';
+    }
 
     void execute() {
-        var exporter = new DOTExporter<Element, DefaultEdge>(e -> '"' + e.simpleName().replaceAll("\\s","\\\\n") + '"');
+        var exporter = new DOTExporter<Element, DefaultEdge>(this::displayName);
         exporter.setVertexAttributeProvider(this::getDotAttributes);
         var writer = new StringWriter();
         exporter.exportGraph(explorer().subgraph(), writer);
@@ -69,7 +78,7 @@ public class GraphCommand extends QueryCommand {
         if (element.isAutoFeature()) {
             styles.add("dashed");
         }
-        result.put("style", createAttribute(styles.stream().collect(joining(","))));
+        result.put("style", createAttribute(String.join(",", styles)));
         return result;
     }
 }
