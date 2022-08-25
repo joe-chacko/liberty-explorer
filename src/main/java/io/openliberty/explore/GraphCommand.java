@@ -25,9 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-import static java.util.stream.Collectors.joining;
 import static org.jgrapht.nio.DefaultAttribute.createAttribute;
 
 @Command(
@@ -37,7 +35,7 @@ import static org.jgrapht.nio.DefaultAttribute.createAttribute;
 public class GraphCommand extends QueryCommand {
     public static final Attribute SUBJECT_FILL_COLOR = createAttribute("gray95");
 
-    GraphCommand() { super(DisplayOption.simple); }
+    GraphCommand() { super(DisplayOption.simple, false); }
 
     @Override
     String displayName(Element e) {

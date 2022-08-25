@@ -64,16 +64,17 @@ public class LibertyExplorer {
         System.exit(exitCode);
     }
 
-    @Option(names = { "-d", "--directory"}, defaultValue = ".",
+    @Option(names = "--directory",
+            defaultValue = ".",
             description = "Liberty root directory (defaults to the working directory)")
     Path libertyRoot;
 
-    @Option(names = {"-v", "--verbose"},
+    @Option(names = "--verbose",
             description = "Provide more detailed output")
     boolean verbose;
 
-    @Option(names = {"-b", "--include-bundles"},
-            description = "Include bundles in the dependency analysis")
+    @Option(names = "--bundles",
+            description = "Process bundles in the dependency analysis")
     boolean includeBundles;
 
     Catalog liberty;

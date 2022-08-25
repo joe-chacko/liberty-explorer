@@ -25,7 +25,6 @@ import picocli.CommandLine.Option;
 
 import java.util.HashMap;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -57,10 +56,10 @@ public class TreeCommand extends QueryCommand {
         Style(TreeStyle treeStyle) { this.treeStyle = treeStyle; }
     }
 
-    @Option(names = {"--tree-style", "-t"}, description = "Choose a tree style from the following: ${COMPLETION-CANDIDATES}")
+    @Option(names = "--style", description = "Choose a tree style from the following: ${COMPLETION-CANDIDATES}")
     Style style = Style.unicode;
 
-    TreeCommand() {super(DisplayOption.simple);}
+    TreeCommand() {super(DisplayOption.simple, true);}
 
     void execute() {
         var graph = explorer().subgraph();

@@ -14,7 +14,6 @@ package io.openliberty.explore;
 
 import io.openliberty.inspect.Bundle;
 import io.openliberty.inspect.Element;
-import io.openliberty.inspect.feature.Feature;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 import picocli.CommandLine.ParentCommand;
@@ -22,7 +21,6 @@ import picocli.CommandLine.ParentCommand;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 
 abstract class QueryCommand implements Callable<Integer> {
     @ParentCommand
@@ -30,8 +28,9 @@ abstract class QueryCommand implements Callable<Integer> {
     @Parameters(arity = "1..*", description = "one or more glob patterns to match features by name")
     private List<String> patterns;
 
-    QueryCommand(DisplayOption defaultDisplay) {
+    QueryCommand(DisplayOption defaultDisplay, boolean defaultScope) {
         display = defaultDisplay;
+        scope = defaultScope;
     }
 
     @Override
@@ -59,17 +58,17 @@ abstract class QueryCommand implements Callable<Integer> {
         String getName(Element e) { return fun.apply(e); }
     }
 
-    @Option(names = {"--display", "-d"}, description = "Control how elements are displayed: ${COMPLETION-CANDIDATES}")
+    @Option(names = "--display", description = "Control how elements are displayed: ${COMPLETION-CANDIDATES}")
     private DisplayOption display = DisplayOption.normal;
 
-    @Option(names = {"-s", "--scope"}, description = "Display additional scope information:" +
+    @Option(names = "--scope", negatable = true, description = "Display additional scope information:" +
             "\n\t [+] - public features" +
             "\n\t [=] - protected features" +
             "\n\t [-] - private features" +
             "\n\t [a] - auto-features" +
             "\n\t [b] - bundles" +
             "\n\t [?] - unknown")
-    private boolean scope = true;
+    private boolean scope;
 
     private String prefix(Element e) {
         if (!scope) return "";
