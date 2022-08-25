@@ -32,6 +32,7 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.toUnmodifiableList;
 
 public final class Feature implements Element {
+    private final Path path;
     private final String fullName;
     private final String shortName;
     private final String name;
@@ -40,9 +41,10 @@ public final class Feature implements Element {
     private final List<ContentSpec> contents;
     private final boolean isAutoFeature;
 
-    public Feature(Path p) {
+    public Feature(Path path) {
+        this.path = path;
         final Attributes attributes;
-        try (InputStream in = new FileInputStream(p.toFile())) {
+        try (InputStream in = new FileInputStream(path.toFile())) {
             attributes = new Manifest(in).getMainAttributes();
         } catch (IOException e) {
             throw new IOError(e);
@@ -65,6 +67,8 @@ public final class Feature implements Element {
         this.version = ManifestKey.SUBSYSTEM_VERSION.get(attributes).map(Version::new).orElse(Version.emptyVersion);
     }
 
+    @Override
+    public Path path() { return path; }
     @Override
     public String symbolicName() { return fullName; }
     public Optional<String> shortName() { return Optional.ofNullable(shortName); }

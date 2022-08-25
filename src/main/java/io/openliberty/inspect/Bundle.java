@@ -49,6 +49,8 @@ public final class Bundle implements Element {
     }
 
     @Override
+    public Path path() { return path; }
+    @Override
     public String symbolicName() {
         return symbolicName;
     }
@@ -58,7 +60,6 @@ public final class Bundle implements Element {
     }
     @Override
     public Version version() { return version; }
-    public String fileName() { return path.getFileName().toString();}
     @Override
     public Stream<String> aka() { return Stream.of(fileName()); }
     @Override

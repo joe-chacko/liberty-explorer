@@ -14,6 +14,7 @@ package io.openliberty.inspect;
 
 import org.osgi.framework.Version;
 
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -21,7 +22,10 @@ import java.util.stream.Stream;
 import static java.util.stream.Stream.concat;
 
 public interface Element extends Comparable<Element> {
+    Path path();
     String symbolicName();
+    default String fileName() { return path().getFileName().toString(); }
+    default String pathName() { return path().toString(); }
     String name();
     Version version();
     /** Returns a stream of other names for this element */

@@ -58,7 +58,6 @@ class ManifestValueEntry {
         return Optional.ofNullable(qualifiers.get(key));
     }
 
-
     public String toString() {
         return String.format("%88s : %s", id, qualifiers);
     }

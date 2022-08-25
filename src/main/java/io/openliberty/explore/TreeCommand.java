@@ -58,9 +58,11 @@ public class TreeCommand extends QueryCommand {
 
     @SuppressWarnings("unused")
     enum DisplayName {
-        TO_STRING(Element::toString),
+        DEFAULT(Element::toString),
         SIMPLE(Element::simpleName),
         SYMBOLIC(Element::symbolicName),
+        PATH(Element::pathName),
+        FILE(Element::fileName),
         FULL_NAME(Element::name)
         ;
         final Function<Element, String> fun;
@@ -68,11 +70,11 @@ public class TreeCommand extends QueryCommand {
         String getName(Element e) { return fun.apply(e); }
     }
 
-    @Option(names = {"--style", "-s"}, description = "Valid values: ${COMPLETION-CANDIDATES}")
+    @Option(names = {"--tree-style", "-t"}, description = "Valid values: ${COMPLETION-CANDIDATES}")
     Style style = Style.UNICODE;
 
-    @Option(names = {"--display", "-d"}, description = "Valid values: ${COMPLETION-CANDIDATES}")
-    DisplayName display = DisplayName.TO_STRING;
+    @Option(names = {"--show", "-s"}, description = "Valid values: ${COMPLETION-CANDIDATES}")
+    DisplayName display = DisplayName.DEFAULT;
 
     void execute() {
         var graph = explorer().subgraph();
