@@ -49,32 +49,32 @@ public class TreeCommand extends QueryCommand {
 
     @SuppressWarnings("unused")
     enum Style {
-        ASCII(ASCII_ROUNDED),
-        UNICODE(UNICODE_ROUNDED),
-        WINDOWS(WIN_TREE);
+        ascii(ASCII_ROUNDED),
+        unicode(UNICODE_ROUNDED),
+        windows(WIN_TREE);
         final TreeStyle treeStyle;
         Style(TreeStyle treeStyle) { this.treeStyle = treeStyle; }
     }
 
     @SuppressWarnings("unused")
     enum DisplayName {
-        DEFAULT(Element::toString),
-        SIMPLE(Element::simpleName),
-        SYMBOLIC(Element::symbolicName),
-        PATH(Element::pathName),
-        FILE(Element::fileName),
-        FULL_NAME(Element::name)
+        normal(Element::toString),
+        simple(Element::simpleName),
+        symbolic(Element::symbolicName),
+        path(Element::pathName),
+        file(Element::fileName),
+        full(Element::name)
         ;
         final Function<Element, String> fun;
         DisplayName(Function<Element, String> fun) { this.fun = fun; }
         String getName(Element e) { return fun.apply(e); }
     }
 
-    @Option(names = {"--tree-style", "-t"}, description = "Valid values: ${COMPLETION-CANDIDATES}")
-    Style style = Style.UNICODE;
+    @Option(names = {"--tree-style", "-t"}, description = "Choose a tree style from the following: ${COMPLETION-CANDIDATES}")
+    Style style = Style.unicode;
 
-    @Option(names = {"--show", "-s"}, description = "Valid values: ${COMPLETION-CANDIDATES}")
-    DisplayName display = DisplayName.DEFAULT;
+    @Option(names = {"--display", "-d"}, description = "Control how elements are displayed: ${COMPLETION-CANDIDATES}")
+    DisplayName display = DisplayName.normal;
 
     void execute() {
         var graph = explorer().subgraph();
