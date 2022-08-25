@@ -16,45 +16,63 @@ import io.openliberty.inspect.Bundle;
 import io.openliberty.inspect.Element;
 import io.openliberty.inspect.feature.Feature;
 import org.barfuin.texttree.api.DefaultNode;
-import org.barfuin.texttree.api.Node;
 import org.barfuin.texttree.api.TextTree;
 import org.barfuin.texttree.api.TreeOptions;
 import org.barfuin.texttree.api.color.DefaultColorScheme;
+import org.barfuin.texttree.api.style.TreeStyle;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 import java.util.HashMap;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.barfuin.texttree.api.CycleProtection.PruneRepeating;
+import static org.barfuin.texttree.api.style.TreeStyles.ASCII_ROUNDED;
 import static org.barfuin.texttree.api.style.TreeStyles.UNICODE_ROUNDED;
+import static org.barfuin.texttree.api.style.TreeStyles.WIN_TREE;
 
 @Command(
         name = "tree",
         description = "Produce an ascii tree of selected features"
 )
 public class TreeCommand extends QueryCommand {
-    private enum TreeUtil {
-        ;
-        static final TextTree TEXT_TREE;
-        static {
-            var opts = new TreeOptions();
-            opts.setCycleProtection(PruneRepeating);
-            opts.setStyle(UNICODE_ROUNDED);
-            opts.setColorScheme(new DefaultColorScheme());
-            TEXT_TREE = TextTree.newInstance(opts);
-        }
-        static String render(Node n) { return TEXT_TREE.render(n); }
-    }
-
-    static class TreeNode extends DefaultNode {
+    class TreeNode extends DefaultNode {
         final Element element;
 
         TreeNode(Element e) {
-            super(e.toString());
+            super(display.getName(e));
             this.element = e;
         }
     }
+
+    @SuppressWarnings("unused")
+    enum Style {
+        ASCII(ASCII_ROUNDED),
+        UNICODE(UNICODE_ROUNDED),
+        WINDOWS(WIN_TREE);
+        final TreeStyle treeStyle;
+        Style(TreeStyle treeStyle) { this.treeStyle = treeStyle; }
+    }
+
+    @SuppressWarnings("unused")
+    enum DisplayName {
+        TO_STRING(Element::toString),
+        SIMPLE(Element::simpleName),
+        SYMBOLIC(Element::symbolicName),
+        FULL_NAME(Element::name)
+        ;
+        final Function<Element, String> fun;
+        DisplayName(Function<Element, String> fun) { this.fun = fun; }
+        String getName(Element e) { return fun.apply(e); }
+    }
+
+    @Option(names = {"--style", "-s"}, description = "Valid values: ${COMPLETION-CANDIDATES}")
+    Style style = Style.UNICODE;
+
+    @Option(names = {"--display", "-d"}, description = "Valid values: ${COMPLETION-CANDIDATES}")
+    DisplayName display = DisplayName.TO_STRING;
 
     void execute() {
         var graph = explorer().subgraph();
@@ -82,7 +100,15 @@ public class TreeCommand extends QueryCommand {
             root = new DefaultNode("Multiple root nodes found");
             roots.forEach(root::addChild);
         }
-        System.out.println(TreeUtil.render(root));
+
+        var opts = new TreeOptions();
+        opts.setCycleProtection(PruneRepeating);
+        opts.setStyle(style.treeStyle);
+        opts.setColorScheme(new DefaultColorScheme());
+        final TextTree TEXT_TREE = TextTree.newInstance(opts);
+
+
+        System.out.println(TEXT_TREE.render(root));
     }
 
 
