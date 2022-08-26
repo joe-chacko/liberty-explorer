@@ -76,8 +76,6 @@ public class Catalog {
                 .forEach(this::initElement);
         // add the features to the graph
         elements.values().forEach(dependencies::addVertex);
-        // compute short unique names for each element
-        computeShortNames();
         // add the feature dependencies to the graph
         elements.values().forEach(this::initDependencies);
     }
@@ -92,22 +90,6 @@ public class Catalog {
                 .map(String::toLowerCase)
                 .map(Paths::get)
                 .forEach(k -> index.put(k, e));
-    }
-
-    private void computeShortNames() {
-//        // create trie with reverse keys
-//        Trie<String, Element> reverseKeyTrie = new PatriciaTrie<>();
-//        elements.forEach((k, v) -> reverseKeyTrie.put(reverse(k), v));
-//
-//        Trie<String, Element> trie3 = findShortestUniquePrefixKeysAndReverseThem(reverseKeyTrie);
-//        trie3.forEach((k,v) -> {
-//            var n = v.symbolicName();
-//            var i = n.indexOf(k);
-//            var prefix = n.substring(0, i);
-//            var suffix = n.substring(i + k.length());
-//            System.err.println("prefix: " + prefix);
-//            System.err.println("suffix: " + suffix);
-//        });
     }
 
     public static void main(String[] args) throws Exception {
