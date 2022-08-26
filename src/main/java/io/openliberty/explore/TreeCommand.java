@@ -98,21 +98,4 @@ public class TreeCommand extends QueryCommand {
                 .map(this::moveScopeToStartOfString)
                 .forEach(System.out::println);
     }
-
-
-
-    private void xxx(Element element) {
-        if (element instanceof Feature) switch(element.visibility()) {
-            case PUBLIC:
-            case PROTECTED:
-            case PRIVATE:
-            case UNKNOWN:
-        }
-        else if (element instanceof Bundle) {}
-        else throw new Error("Unknown element type: " + element.getClass());
-        if (explorer().isPrimary(element)) {
-        }
-        if (element.isAutoFeature()) {
-        }
-    }
 }
