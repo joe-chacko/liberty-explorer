@@ -22,7 +22,7 @@ public class BundleSpec implements ContentSpec {
 
     BundleSpec(ManifestValueEntry ve) {
         this.symbolicName = ve.id;
-        this.versionRange = VersionRange.valueOf(ve.getQualifier("version"));
+        this.versionRange = VersionRange.valueOf(ve.getQualifierOrDefault("version", "0.0"));
     }
 
     @Override

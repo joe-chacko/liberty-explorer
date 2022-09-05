@@ -118,7 +118,7 @@ public class LibertyExplorer {
                     .map(graph::getEdgeTarget)
                     // filter out any that we already know about
                     .filter(not(results::contains))
-                    .collect(toSet());
+                    .collect(toUnmodifiableSet());
             results.addAll(deps);
         }
         return unmodifiableSet(results);
