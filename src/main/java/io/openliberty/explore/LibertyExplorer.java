@@ -42,13 +42,13 @@ import static java.util.Collections.emptySet;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
-import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static java.util.stream.Collectors.toUnmodifiableSet;
 
 @Command(
         name = "lx",
         description = "Liberty installation eXplorer",
+        version = "Liberty installation eXplorer 0.5",
         subcommands = {ListCommand.class, GraphCommand.class, TreeCommand.class, HelpCommand.class},
         defaultValueProvider = PropertiesDefaultProvider.class
 )
