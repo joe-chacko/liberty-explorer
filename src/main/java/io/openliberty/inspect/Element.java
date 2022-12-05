@@ -26,6 +26,7 @@ public interface Element extends Comparable<Element> {
     String symbolicName();
     default String fileName() { return path().getFileName().toString(); }
     default String pathName() { return path().toString(); }
+    default String description() { return "No Description found"; }
     String name();
     Version version();
     /** Returns a stream of other names for this element */

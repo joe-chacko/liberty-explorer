@@ -49,7 +49,7 @@ import static java.util.stream.Collectors.toUnmodifiableSet;
         name = "lx",
         description = "Liberty installation eXplorer",
         version = "Liberty installation eXplorer 0.5",
-        subcommands = {ListCommand.class, GraphCommand.class, TreeCommand.class, HelpCommand.class},
+        subcommands = {DescribeCommand.class, ListCommand.class, GraphCommand.class, TreeCommand.class, HelpCommand.class},
         defaultValueProvider = PropertiesDefaultProvider.class
 )
 public class LibertyExplorer {
