@@ -20,11 +20,13 @@ import java.io.FileInputStream;
 import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Stream;
@@ -37,6 +39,7 @@ public final class Feature implements Element {
     private final String fullName;
     private final String shortName;
     private final String name;
+    private final String description;
     private final Version version;
     private final Visibility visibility;
     private final List<ContentSpec> contents;
@@ -62,6 +65,9 @@ public final class Feature implements Element {
                 .collect(toUnmodifiableList());
         this.isAutoFeature = ManifestKey.IBM_PROVISION_CAPABILITY.isPresent(attributes);
         this.version = ManifestKey.SUBSYSTEM_VERSION.get(attributes).map(Version::new).orElse(Version.emptyVersion);
+        this.description = "hi";
+//        Path featureDir = validate(libertyRoot.resolve("lib/features"), "No feature subdirectory found: ");
+//        String description =
     }
 
     private static Visibility getVisibility(ManifestValueEntry symbolicName) {
@@ -78,6 +84,16 @@ public final class Feature implements Element {
     public Optional<String> shortName() { return Optional.ofNullable(shortName); }
     public Visibility visibility() { return this.visibility; }
     public String name() { return name; }
+    public String description() {
+        if (visibility() == Visibility.PUBLIC) {
+            try {
+                return getPublicFeatureDescription();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return "No Description found";
+    }
     public Version version() { return version; }
     public Stream<String> aka() { return Stream.of(shortName); }
     public boolean isAutoFeature() { return isAutoFeature; }
@@ -101,25 +117,48 @@ public final class Feature implements Element {
     public boolean equals(Object other) {
         if (this == other) return true;
         if (other == null) return false;
-        if (! (other instanceof Feature)) return false;
+        if (!(other instanceof Feature)) return false;
         Feature that = (Feature) other;
         return this.fullName.equals(that.fullName);
     }
 
     @Override
-    public int hashCode() { return Objects.hash(fullName); }
+    public int hashCode() {
+        return Objects.hash(fullName);
+    }
 
     @Override
-    public String toString() { return symbolicName(); }
+    public String toString() {
+        return symbolicName();
+    }
 
     static Optional<ContentSpec> createSpec(ManifestValueEntry ve) {
         String type = ve.getQualifierOrDefault("type", "bundle");
         switch (type) {
-            case "osgi.subsystem.feature": return Optional.of(ve).map(FeatureSpec::new);
-            case "bundle": return Optional.of(ve).map(BundleSpec::new);
-            case "file": return Optional.empty();
-            case "jar": return Optional.empty();
-            default: throw new IllegalStateException("Unknown content type: " + type);
+            case "osgi.subsystem.feature":
+                return Optional.of(ve).map(FeatureSpec::new);
+            case "bundle":
+                return Optional.of(ve).map(BundleSpec::new);
+            case "file":
+                return Optional.empty();
+            case "jar":
+                return Optional.empty();
+            default:
+                throw new IllegalStateException("Unknown content type: " + type);
         }
     }
+
+    private String getPublicFeatureDescription() throws IOException {
+        Path featuresRoot = path.getParent();
+        Path propertiesFile = validate(featuresRoot.resolve("l10n/" + symbolicName() + ".properties"), "No properties file found: ");
+        Properties prop = new Properties();
+        prop.load(new FileInputStream(propertiesFile.toString()));
+        return prop.getProperty("description");
+    }
+
+    private static Path validate(Path path, String errorMessage) {
+        if (Files.exists(path)) return path;
+        throw new Error(errorMessage + path.toFile().getAbsolutePath());
+    }
+
 }
