@@ -29,6 +29,7 @@ import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
+import static io.openliberty.inspect.Visibility.UNKNOWN;
 import static java.util.stream.Collectors.toUnmodifiableList;
 
 public final class Feature implements Element {
@@ -52,11 +53,7 @@ public final class Feature implements Element {
         Optional<ManifestValueEntry> symbolicName = ManifestKey.SUBSYSTEM_SYMBOLICNAME.parseValues(attributes).findFirst();
         this.fullName = symbolicName.orElseThrow(Error::new).id;
         this.shortName = ManifestKey.IBM_SHORTNAME.get(attributes).orElse(null);
-        this.visibility = symbolicName
-                .map(v -> v.getQualifier("visibility"))
-                .map(String::toUpperCase)
-                .map(Visibility::valueOf)
-                .orElse(Visibility.UNKNOWN);
+        this.visibility = symbolicName.map(Feature::getVisibility).orElse(UNKNOWN);
         this.name = visibility == Visibility.PUBLIC ? shortName().orElse(fullName) : fullName;
         this.contents = ManifestKey.SUBSYSTEM_CONTENT.parseValues(attributes)
                 .map(Feature::createSpec)
@@ -67,30 +64,30 @@ public final class Feature implements Element {
         this.version = ManifestKey.SUBSYSTEM_VERSION.get(attributes).map(Version::new).orElse(Version.emptyVersion);
     }
 
-    @Override
+    private static Visibility getVisibility(ManifestValueEntry symbolicName) {
+        String vis = symbolicName.getQualifier("visibility").toUpperCase();
+        try {
+            return Visibility.valueOf(vis);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
     public Path path() { return path; }
-    @Override
     public String symbolicName() { return fullName; }
     public Optional<String> shortName() { return Optional.ofNullable(shortName); }
-    @Override
     public Visibility visibility() { return this.visibility; }
-    @Override
     public String name() { return name; }
-    @Override
     public Version version() { return version; }
-    @Override
     public Stream<String> aka() { return Stream.of(shortName); }
-    @Override
     public boolean isAutoFeature() { return isAutoFeature; }
 
-    @Override
     public Stream<Element> findDependencies(Collection<Element> elements) {
         return contents.stream()
                 .map(spec -> spec.findBestMatch(elements))
                 .flatMap(Optional::stream);
     }
 
-    @Override
     public int compareTo(Element other) {
         if (!(other instanceof Feature)) return -1; // Features sort before other element types
         Feature that = (Feature) other;
