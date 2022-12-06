@@ -12,10 +12,7 @@
  */
 package io.openliberty.explore;
 
-import io.openliberty.inspect.Bundle;
-import io.openliberty.inspect.Visibility;
 import picocli.CommandLine.Command;
-
 import static picocli.CommandLine.Help.Ansi.Style.fg_red;
 
 @Command(
@@ -29,34 +26,8 @@ public class DescribeCommand extends QueryCommand {
     }
 
     void execute() {
-        explorer().allResults().stream().map(e -> "" + fg_red.on() + this.displayName(e) + ":" + fg_red.off() + "\n" +
-                e.description() + "\n").
+        explorer().allResults().stream().map(e -> "" + fg_red.on() + this.displayName(e) + ":" + fg_red.off() + "\n" + e.description() + "\n").
                 sorted().
                 forEach(System.out::println);
-
-//        explorer().allResults().stream().filter(e -> e.visibility() == Visibility.PUBLIC).forEach(e -> {
-//                    System.out.println(fg_red.on() + this.displayName(e) + ":" + fg_red.off());
-//                    System.out.println(e.description() + "\n");
-//                }
-//        );
-//        explorer().allResults().stream().filter(e -> e instanceof Bundle).forEach(e -> {
-//                    System.out.println(fg_red.on() + this.displayName(e) + ":" + fg_red.off());
-//                    System.out.println(e.description() + "\n");
-//                }
-//        );
-
-//        explorer().allResults().stream().filter(e -> e instanceof Bundle).map(Element::description).forEach(System.out::println);
-//        System.out.println("***pathName***");
-//        explorer().allResults().stream().filter(e-> e.visibility()== Visibility.PUBLIC).map(Element::pathName).forEach(System.out::println);
-//        System.out.println("***Path***");
-//        explorer().allResults().stream().filter(e-> e.visibility()== Visibility.PUBLIC).map(Element::path).forEach(System.out::println);
-//        System.out.println("***name***");
-//        explorer().allResults().stream().filter(e-> e.visibility()== Visibility.PUBLIC).map(Element::name).forEach(System.out::println);
-//        System.out.println("***symbolicName***");
-//        explorer().allResults().stream().filter(e-> e.visibility()== Visibility.PUBLIC).map(Element::symbolicName).forEach(System.out::println);
-//        System.out.println("***fileName***");
-//        explorer().allResults().stream().filter(e-> e.visibility()== Visibility.PUBLIC).map(Element::fileName).forEach(System.out::println);
-//        System.out.println("***simpleName***");
-//        explorer().allResults().stream().filter(e-> e.visibility()== Visibility.PUBLIC).map(Element::simpleName).forEach(System.out::println);
     }
 }
