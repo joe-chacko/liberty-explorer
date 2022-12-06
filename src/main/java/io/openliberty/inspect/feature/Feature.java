@@ -42,6 +42,7 @@ public final class Feature implements Element {
     private final Version version;
     private final Visibility visibility;
     private final List<ContentSpec> contents;
+    private final Manifest manifest;
     private final boolean isAutoFeature;
 
     public Feature(Path path) {
@@ -64,6 +65,11 @@ public final class Feature implements Element {
                 .collect(toUnmodifiableList());
         this.isAutoFeature = ManifestKey.IBM_PROVISION_CAPABILITY.isPresent(attributes);
         this.version = ManifestKey.SUBSYSTEM_VERSION.get(attributes).map(Version::new).orElse(Version.emptyVersion);
+        try {
+            this.manifest = new Manifest(path.toUri().toURL().openStream());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static Visibility getVisibility(ManifestValueEntry symbolicName) {
@@ -88,6 +94,10 @@ public final class Feature implements Element {
                 throw new RuntimeException(e);
             }
         }
+        Attributes attributes = manifest.getMainAttributes();
+        String symbolicNameAttr = attributes.getValue("Subsystem-SymbolicName").substring(symbolicName().length() + 2);
+        if(isAutoFeature()) return "" + symbolicNameAttr + "\n" + attributes.getValue("IBM-Provision-Capability");
+        if(!symbolicNameAttr.isEmpty()) return symbolicNameAttr;
         return "No Description found";
     }
     public Version version() { return version; }
