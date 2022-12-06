@@ -39,7 +39,6 @@ public final class Feature implements Element {
     private final String fullName;
     private final String shortName;
     private final String name;
-    private final String description;
     private final Version version;
     private final Visibility visibility;
     private final List<ContentSpec> contents;
@@ -65,9 +64,6 @@ public final class Feature implements Element {
                 .collect(toUnmodifiableList());
         this.isAutoFeature = ManifestKey.IBM_PROVISION_CAPABILITY.isPresent(attributes);
         this.version = ManifestKey.SUBSYSTEM_VERSION.get(attributes).map(Version::new).orElse(Version.emptyVersion);
-        this.description = "hi";
-//        Path featureDir = validate(libertyRoot.resolve("lib/features"), "No feature subdirectory found: ");
-//        String description =
     }
 
     private static Visibility getVisibility(ManifestValueEntry symbolicName) {
@@ -150,15 +146,15 @@ public final class Feature implements Element {
 
     private String getPublicFeatureDescription() throws IOException {
         Path featuresRoot = path.getParent();
-        Path propertiesFile = validate(featuresRoot.resolve("l10n/" + symbolicName() + ".properties"), "No properties file found: ");
+        Path propertiesFile = validate(featuresRoot.resolve("l10n/" + symbolicName() + ".properties"));
         Properties prop = new Properties();
         prop.load(new FileInputStream(propertiesFile.toString()));
         return prop.getProperty("description");
     }
 
-    private static Path validate(Path path, String errorMessage) {
+    private static Path validate(Path path) {
         if (Files.exists(path)) return path;
-        throw new Error(errorMessage + path.toFile().getAbsolutePath());
+        throw new Error("No properties file found: " + path.toFile().getAbsolutePath());
     }
 
 }
