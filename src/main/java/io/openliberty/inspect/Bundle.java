@@ -51,13 +51,12 @@ public final class Bundle implements Element {
     @Override
     public Path path() { return path; }
     @Override
-    public String symbolicName() {
-        return symbolicName;
-    }
+    public String symbolicName() { return symbolicName; }
     @Override
-    public String name() {
-        return symbolicName() + "_" + version;
-    }
+    public String name() { return symbolicName() + "_" + version; }
+    @Override
+    public String description() { return manifest.getMainAttributes().getValue("Bundle-Description"); }
+
     @Override
     public Version version() { return version; }
     @Override
