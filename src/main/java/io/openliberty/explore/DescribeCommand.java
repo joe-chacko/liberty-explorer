@@ -29,16 +29,21 @@ public class DescribeCommand extends QueryCommand {
     }
 
     void execute() {
-        explorer().allResults().stream().filter(e -> e.visibility() == Visibility.PUBLIC).forEach(e -> {
-                    System.out.println(fg_red.on() + e.name() + ":" + fg_red.off());
-                    System.out.println(e.description() + "\n");
-                }
-        );
-        explorer().allResults().stream().filter(e -> e instanceof Bundle).forEach(e -> {
-                    System.out.println(fg_red.on() + e.pathName() + ":" + fg_red.off());
-                    System.out.println(e.description() + "\n");
-                }
-        );
+        explorer().allResults().stream().map(e -> "" + fg_red.on() + this.displayName(e) + ":" + fg_red.off() + "\n" +
+                e.description() + "\n").
+                sorted().
+                forEach(System.out::println);
+
+//        explorer().allResults().stream().filter(e -> e.visibility() == Visibility.PUBLIC).forEach(e -> {
+//                    System.out.println(fg_red.on() + this.displayName(e) + ":" + fg_red.off());
+//                    System.out.println(e.description() + "\n");
+//                }
+//        );
+//        explorer().allResults().stream().filter(e -> e instanceof Bundle).forEach(e -> {
+//                    System.out.println(fg_red.on() + this.displayName(e) + ":" + fg_red.off());
+//                    System.out.println(e.description() + "\n");
+//                }
+//        );
 
 //        explorer().allResults().stream().filter(e -> e instanceof Bundle).map(Element::description).forEach(System.out::println);
 //        System.out.println("***pathName***");
