@@ -240,4 +240,8 @@ gradle-app.setting
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
 
+# Generated Graphs from lx graph
+src/main/java/io/openliberty/explore/GraphDisplay/Graph.html
+src/main/java/io/openliberty/explore/GraphDisplay/Graph.svg
+
 # End of https://www.toptal.com/developers/gitignore/api/macos,intellij,gradle,java,vim,visualstudiocode

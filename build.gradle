@@ -27,10 +27,13 @@ repositories {
 }
 
 dependencies {
+    implementation "guru.nidi:graphviz-java:0.18.1"
     implementation "org.jgrapht:jgrapht-core:1.5.1"
     implementation "org.jgrapht:jgrapht-io:1.5.1"
     implementation "info.picocli:picocli:4.6.3"
     implementation "org.barfuin.texttree:text-tree:2.1.2"
     implementation "org.osgi:osgi.core:8.0.0"
     implementation "org.apache.commons:commons-collections4:4.4"
+    implementation "commons-io:commons-io:2.6"
+    implementation "org.slf4j:slf4j-nop:1.7.36"
 }
