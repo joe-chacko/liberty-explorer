@@ -58,9 +58,9 @@ public class GraphCommand extends QueryCommand {
                 + '"';
     }
 
-    String getNodes(String dotcode) throws IOException {
+    String getNodes(String graphDotCode) throws IOException {
         StringBuilder nodes = new StringBuilder();
-        BufferedReader bufReader = new BufferedReader(new StringReader(dotcode));
+        BufferedReader bufReader = new BufferedReader(new StringReader(graphDotCode));
         String line;
         while ((line = bufReader.readLine()) != null) {
             if (line.contains(" [")) {
@@ -71,9 +71,9 @@ public class GraphCommand extends QueryCommand {
         return nodes.toString();
     }
 
-    String getEdges(String dotcode) throws IOException {
+    String getEdges(String graphDotCode) throws IOException {
         StringBuilder nodes = new StringBuilder();
-        BufferedReader bufReader = new BufferedReader(new StringReader(dotcode));
+        BufferedReader bufReader = new BufferedReader(new StringReader(graphDotCode));
         String line;
         while ((line = bufReader.readLine()) != null) {
             if (line.contains(" ->")) {
@@ -84,14 +84,14 @@ public class GraphCommand extends QueryCommand {
         return nodes.toString();
     }
 
-    URI generateInteractiveGraph(String dotcode) throws IOException {
+    URI generateInteractiveGraph(String graphDotCode) throws IOException {
         String templateFilePath = "src/main/java/io/openliberty/explore/GraphDisplay/template.html";
         String htmlFilePath = "src/main/java/io/openliberty/explore/GraphDisplay/Graph.html";
         File htmlTemplateFile = new File(templateFilePath);
 
         String htmlString = FileUtils.readFileToString(htmlTemplateFile, StandardCharsets.UTF_8);
-        htmlString = htmlString.replace("$nodes", getNodes(dotcode));
-        htmlString = htmlString.replace("$edges", getEdges(dotcode));
+        htmlString = htmlString.replace("$nodes", getNodes(graphDotCode));
+        htmlString = htmlString.replace("$edges", getEdges(graphDotCode));
 
         File newHtmlFile = new File(htmlFilePath);
         FileUtils.writeStringToFile(newHtmlFile, htmlString, StandardCharsets.UTF_8);
@@ -99,8 +99,8 @@ public class GraphCommand extends QueryCommand {
         return newHtmlFile.toURI();
     }
 
-    URI generateSVGGraph(String dotCode) throws IOException {
-        MutableGraph g = new Parser().read(dotCode);
+    URI generateSVGGraph(String graphDotCode) throws IOException {
+        MutableGraph g = new Parser().read(graphDotCode);
         File svgFile = new File("src/main/java/io/openliberty/explore/GraphDisplay/Graph.svg");
         Graphviz.fromGraph(g).render(Format.SVG).toFile(svgFile);
         Desktop.getDesktop().browse(svgFile.toURI());
