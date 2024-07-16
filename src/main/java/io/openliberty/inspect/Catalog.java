@@ -68,8 +68,9 @@ public class Catalog {
                 .map(Bundle::new)
                 .forEach(this::initElement);
         Path featureDir = validate(libertyRoot.resolve("lib/features"), "No feature subdirectory found: ");
+        Path platformDir = validate(libertyRoot.resolve("lib/platform"), "No platform subdirectory found: ");
         // parse feature manifests
-        Files.list(featureDir)
+        Stream.concat(Files.list(platformDir), Files.list(featureDir))
                 .filter(Files::isRegularFile)
                 .filter(p -> p.toString().endsWith(".mf"))
                 .map(Feature::new)
