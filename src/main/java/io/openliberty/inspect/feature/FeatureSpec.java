@@ -47,6 +47,12 @@ public class FeatureSpec implements ContentSpec {
         return ordinal(f1) - ordinal(f2);
     }
 
+    String getPrimaryDependencyName() { return symbolicNames.get(0); }
+
+    Stream<String> getToleratedDependencyNames() { return symbolicNames.stream().skip(1); }
+
+    boolean hasToleratedDependencies() { return symbolicNames.size() > 1; }
+
     private int ordinal(Element f) {
         int result = symbolicNames.indexOf(f.symbolicName());
         if (-1 == result)
@@ -61,5 +67,11 @@ public class FeatureSpec implements ContentSpec {
                 symbolicNames.stream()
                         .map(s -> s.replaceFirst("^[^-]*-", ""))
                         .collect(joining("|", "(", ")"));
+    }
+
+    String describe() {
+        return hasToleratedDependencies() ?
+                getPrimaryDependencyName() + " (but will tolerate: " + getToleratedDependencyNames().collect(joining(", "))+ ")":
+                    getPrimaryDependencyName();
     }
 }

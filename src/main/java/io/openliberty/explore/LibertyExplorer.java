@@ -13,8 +13,20 @@
 package io.openliberty.explore;
 
 
-import io.openliberty.inspect.Catalog;
-import io.openliberty.inspect.Element;
+import java.nio.file.Path;
+import java.util.Arrays;
+import static java.util.Collections.emptySet;
+import static java.util.Collections.unmodifiableSet;
+import java.util.HashSet;
+import java.util.List;
+import static java.util.Objects.requireNonNull;
+import java.util.Set;
+import static java.util.function.Predicate.not;
+import java.util.stream.Collectors;
+import static java.util.stream.Collectors.toUnmodifiableList;
+import static java.util.stream.Collectors.toUnmodifiableSet;
+import java.util.stream.Stream;
+
 import org.jgrapht.Graph;
 import org.jgrapht.GraphPath;
 import org.jgrapht.alg.shortestpath.AllDirectedPaths;
@@ -22,34 +34,28 @@ import org.jgrapht.graph.AsGraphUnion;
 import org.jgrapht.graph.AsSubgraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.EdgeReversedGraph;
+
+import static io.openliberty.GraphCollectors.toUnionWith;
+import static io.openliberty.explore.LibertyExplorer.Direction.FORWARD;
+import static io.openliberty.explore.LibertyExplorer.Direction.REVERSE;
+import io.openliberty.inspect.Catalog;
+import io.openliberty.inspect.Element;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.HelpCommand;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.PropertiesDefaultProvider;
 
-import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static io.openliberty.GraphCollectors.toUnionWith;
-import static io.openliberty.explore.LibertyExplorer.Direction.FORWARD;
-import static io.openliberty.explore.LibertyExplorer.Direction.REVERSE;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.unmodifiableSet;
-import static java.util.Objects.requireNonNull;
-import static java.util.function.Predicate.not;
-import static java.util.stream.Collectors.toUnmodifiableList;
-import static java.util.stream.Collectors.toUnmodifiableSet;
-
 @Command(
         name = "lx",
         description = "Liberty installation eXplorer",
         version = "Liberty installation eXplorer 0.5",
-        subcommands = {DescribeCommand.class, ListCommand.class, GraphCommand.class, TreeCommand.class, HelpCommand.class},
+        subcommands = {
+                ExplainCommand.class,
+                ListCommand.class,
+                GraphCommand.class,
+                TreeCommand.class,
+                HelpCommand.class},
         defaultValueProvider = PropertiesDefaultProvider.class
 )
 public class LibertyExplorer {
@@ -90,6 +96,10 @@ public class LibertyExplorer {
         if (verbose) System.err.println("Patterns: " + patterns.stream().collect(Collectors.joining("' '", "'", "'")));
         this.patterns = patterns;
         removeExcludedElements();
+    }
+
+    void init(String...patterns) throws Exception {
+        init(Arrays.asList(patterns));
     }
 
     void removeExcludedElements() {

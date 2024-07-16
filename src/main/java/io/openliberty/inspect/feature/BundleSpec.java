@@ -17,12 +17,13 @@ import io.openliberty.inspect.Element;
 import org.osgi.framework.VersionRange;
 
 public class BundleSpec implements ContentSpec {
+    private final static VersionRange DEFAULT_RANGE = VersionRange.valueOf("0.0");
     final String symbolicName;
     final VersionRange versionRange;
 
     BundleSpec(ManifestValueEntry ve) {
         this.symbolicName = ve.id;
-        this.versionRange = VersionRange.valueOf(ve.getQualifierOrDefault("version", "0.0"));
+        this.versionRange = ve.getQualifierIfPresent("version").map(VersionRange::valueOf).orElse(DEFAULT_RANGE);
     }
 
     @Override
@@ -39,5 +40,15 @@ public class BundleSpec implements ContentSpec {
     @Override
     public String toString() {
         return symbolicName + ":" + versionRange;
+    }
+
+    String describe() {
+        if (DEFAULT_RANGE == versionRange) return symbolicName + " at any version."; 
+        if (versionRange.isExact()) return symbolicName + " version " + versionRange.getLeft();
+        return symbolicName + " from version " + versionRange.getLeft()
+                + (versionRange.getRightType() == VersionRange.RIGHT_CLOSED ?
+                        " up to and including ":
+                        " up to but not including ")
+                + versionRange.getRight() + versionRange.getRightType();
     }
 }

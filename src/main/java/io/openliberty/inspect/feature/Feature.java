@@ -12,9 +12,8 @@
  */
 package io.openliberty.inspect.feature;
 
-import io.openliberty.inspect.Element;
-import io.openliberty.inspect.Visibility;
-import org.osgi.framework.Version;
+import static io.openliberty.inspect.Visibility.UNKNOWN;
+import static java.util.stream.Collectors.toUnmodifiableList;
 
 import java.io.FileInputStream;
 import java.io.IOError;
@@ -29,10 +28,13 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.openliberty.inspect.Visibility.UNKNOWN;
-import static java.util.stream.Collectors.toUnmodifiableList;
+import org.osgi.framework.Version;
+
+import io.openliberty.inspect.Element;
+import io.openliberty.inspect.Visibility;
 
 public final class Feature implements Element {
     private final Path path;
@@ -44,9 +46,10 @@ public final class Feature implements Element {
     private final List<ContentSpec> contents;
     private final Manifest manifest;
     private final boolean isAutoFeature;
+    private final String desc;
 
     public Feature(Path path) {
-        this.path = path;
+        this.path = path.normalize();
         final Attributes attributes;
         try (InputStream in = new FileInputStream(path.toFile())) {
             attributes = new Manifest(in).getMainAttributes();
@@ -60,8 +63,7 @@ public final class Feature implements Element {
         this.name = visibility == Visibility.PUBLIC ? shortName().orElse(fullName) : fullName;
         this.contents = ManifestKey.SUBSYSTEM_CONTENT.parseValues(attributes)
                 .map(Feature::createSpec)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
+                .filter(Objects::nonNull)
                 .collect(toUnmodifiableList());
         this.isAutoFeature = ManifestKey.IBM_PROVISION_CAPABILITY.isPresent(attributes);
         this.version = ManifestKey.SUBSYSTEM_VERSION.get(attributes).map(Version::new).orElse(Version.emptyVersion);
@@ -70,6 +72,9 @@ public final class Feature implements Element {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        this.desc = ManifestKey.SUBSYSTEM_DESCRIPTION.get(attributes)
+                .map(this::resolveDescription)
+                .orElseGet(this::getPrivateFeatureDescription);
     }
 
     private static Visibility getVisibility(ManifestValueEntry symbolicName) {
@@ -86,19 +91,14 @@ public final class Feature implements Element {
     public Optional<String> shortName() { return Optional.ofNullable(shortName); }
     public Visibility visibility() { return this.visibility; }
     public String name() { return name; }
-    public String description() {
-        if (visibility() == Visibility.PUBLIC) {
-            try {
-                return getPublicFeatureDescription();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+    public String description() { return this.desc; }
+    private String resolveDescription(String desc) {
+        if (! desc.contains("%description")) return desc;
+        try {
+            return getPublicFeatureDescription();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-        Attributes attributes = manifest.getMainAttributes();
-        String symbolicNameAttr = attributes.getValue("Subsystem-SymbolicName").substring(symbolicName().length() + 2);
-        if(isAutoFeature()) return "" + symbolicNameAttr + "\n" + attributes.getValue("IBM-Provision-Capability");
-        if(!symbolicNameAttr.isEmpty()) return symbolicNameAttr;
-        return "No Description found";
     }
     public Version version() { return version; }
     public Stream<String> aka() { return Stream.of(shortName); }
@@ -108,6 +108,37 @@ public final class Feature implements Element {
         return contents.stream()
                 .map(spec -> spec.findBestMatch(elements))
                 .flatMap(Optional::stream);
+    }
+
+    public boolean hasFeatureDependencies() { return contents.stream().filter(FeatureSpec.class::isInstance).findAny().isPresent(); }
+    public boolean hasBundleDependencies() { return contents.stream().filter(BundleSpec.class::isInstance).findAny().isPresent(); }
+
+    public Stream<String> getPrimaryFeatureDependencies() {
+        return contents.stream()
+                .filter(FeatureSpec.class::isInstance)
+                .map(FeatureSpec.class::cast)
+                .map(FeatureSpec::getPrimaryDependencyName);
+    }
+
+    public Stream<String> getToleratedFeatureDependencies() {
+        return contents.stream()
+                .filter(FeatureSpec.class::isInstance)
+                .map(FeatureSpec.class::cast)
+                .flatMap(FeatureSpec::getToleratedDependencyNames);
+    }
+
+    public Stream<String> formatFeatureDependencies() {
+        return contents.stream()
+                .filter(FeatureSpec.class::isInstance)
+                .map(FeatureSpec.class::cast)
+                .map(FeatureSpec::describe);
+    }
+
+    public Stream<String> formatBundleDependencies() {
+        return contents.stream()
+                .filter(BundleSpec.class::isInstance)
+                .map(BundleSpec.class::cast)
+                .map(BundleSpec::describe);
     }
 
     public int compareTo(Element other) {
@@ -138,17 +169,17 @@ public final class Feature implements Element {
         return symbolicName();
     }
 
-    static Optional<ContentSpec> createSpec(ManifestValueEntry ve) {
+    static ContentSpec createSpec(ManifestValueEntry ve) {
         String type = ve.getQualifierOrDefault("type", "bundle");
         switch (type) {
             case "osgi.subsystem.feature":
-                return Optional.of(ve).map(FeatureSpec::new);
+                return new FeatureSpec(ve);
             case "bundle":
-                return Optional.of(ve).map(BundleSpec::new);
+                return new BundleSpec(ve);
+            case "boot.jar":
             case "file":
-                return Optional.empty();
             case "jar":
-                return Optional.empty();
+                return null;
             default:
                 throw new IllegalStateException("Unknown content type: " + type);
         }
@@ -156,15 +187,24 @@ public final class Feature implements Element {
 
     private String getPublicFeatureDescription() throws IOException {
         Path featuresRoot = path.getParent();
-        Path propertiesFile = validate(featuresRoot.resolve("l10n/" + symbolicName() + ".properties"));
+        Path propsFile = featuresRoot.resolve("l10n/" + symbolicName() + ".properties");
+        if (!Files.exists(propsFile)) return "Feature description missing";
+        Path propertiesFile = validate(propsFile);
         Properties prop = new Properties();
         prop.load(new FileInputStream(propertiesFile.toString()));
         return prop.getProperty("description");
+    }
+
+    private String getPrivateFeatureDescription() {
+        Attributes attributes = manifest.getMainAttributes();
+        String symbolicNameAttr = attributes.getValue("Subsystem-SymbolicName").substring(symbolicName().length() + 2);
+        if(isAutoFeature()) return "" + symbolicNameAttr + "\n" + attributes.getValue("IBM-Provision-Capability");
+        if(!symbolicNameAttr.isEmpty()) return symbolicNameAttr;
+        return "";
     }
 
     private static Path validate(Path path) {
         if (Files.exists(path)) return path;
         throw new Error("No properties file found: " + path.toFile().getAbsolutePath());
     }
-
 }

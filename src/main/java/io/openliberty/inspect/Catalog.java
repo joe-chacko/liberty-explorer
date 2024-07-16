@@ -61,8 +61,9 @@ public class Catalog {
     public Catalog(Path libertyRoot, boolean includeBundles) throws IOException {
         validate(libertyRoot, "Not a valid directory: ");
         Path libDir = validate(libertyRoot.resolve("lib"), "No lib subdirectory found: ");
+        Path devDir = validate(libertyRoot.resolve("dev"), "No dev subdirectory found: ");
         // parse bundles
-        if (includeBundles) Files.list(libDir)
+        if (includeBundles) Stream.concat(Files.walk(devDir),Files.list(libDir))
                 .filter(Files::isRegularFile)
                 .filter(p -> p.toString().endsWith(".jar"))
                 .map(Bundle::new)
