@@ -1,4 +1,7 @@
 ### Manually added rules ###
+.metadata
+.settings
+bin
 
 # ignore PDFs
 *.pdf
