@@ -12,14 +12,14 @@
  */
 package io.openliberty.inspect.feature;
 
-import io.openliberty.inspect.Element;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toUnmodifiableList;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toUnmodifiableList;
+import io.openliberty.inspect.Element;
 
 public class FeatureSpec implements ContentSpec {
     // first item is the preferred version, the rest are tolerated

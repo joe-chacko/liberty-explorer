@@ -1,6 +1,6 @@
 /*
  * =============================================================================
- * Copyright (c) 2022 IBM Corporation and others.
+ * Copyright (c) 2022,2024 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v2.0
  * which accompanies this distribution, and is available at
@@ -12,13 +12,7 @@
  */
 package io.openliberty.explore;
 
-import io.openliberty.inspect.Bundle;
-import io.openliberty.inspect.Element;
-import io.openliberty.inspect.feature.Feature;
-import org.jgrapht.graph.DefaultEdge;
-import org.jgrapht.nio.Attribute;
-import org.jgrapht.nio.dot.DOTExporter;
-import picocli.CommandLine.Command;
+import static org.jgrapht.nio.DefaultAttribute.createAttribute;
 
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -26,7 +20,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.jgrapht.nio.DefaultAttribute.createAttribute;
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.nio.Attribute;
+import org.jgrapht.nio.dot.DOTExporter;
+
+import io.openliberty.inspect.Bundle;
+import io.openliberty.inspect.Element;
+import io.openliberty.inspect.feature.Feature;
+import picocli.CommandLine.Command;
 
 @Command(
         name = "graph",

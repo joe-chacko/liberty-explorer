@@ -1,6 +1,6 @@
 /*
  * =============================================================================
- * Copyright (c) 2022,2024 IBM Corporation and others.
+ * Copyright (c) 2024 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v2.0
  * which accompanies this distribution, and is available at
@@ -12,10 +12,10 @@
  */
 package io.openliberty.explore;
 
+import static java.util.stream.Collectors.joining;
+
 import java.util.EnumMap;
 import java.util.List;
-import static java.util.function.Predicate.not;
-import java.util.stream.Collectors;
 
 import io.openliberty.inspect.Visibility;
 import io.openliberty.inspect.feature.Feature;
@@ -64,7 +64,7 @@ public class ExplainCommand {
                     + f.description() + "%n";
             case PROTECTED -> "This is a protected feature; it can be included by Liberty or extension features.%n";
             case PRIVATE -> f.isAutoFeature() ?
-                    "This is an auto-feature; it will be included automatically based on the presence of other features in combination.%n" :
+                    getAutoFeatureRequirementsText(f)  :
                     "This is a private feature; it can be included by other Liberty features.%n";
             default -> "The visibility of this feature is unknown.%n";
         });
@@ -78,5 +78,16 @@ public class ExplainCommand {
             f.formatBundleDependencies().map(BULLET_POINT::concat).forEach(System.out::println);
         }
         System.out.println();
+    }
+
+    private String getAutoFeatureRequirementsText(Feature f) {
+        return "This is an auto-feature; it will be included automatically if the following features are present:" + f.getAutoFeatureDetails().stream()
+                .map(list -> switch(list.size()) {
+                    case 1 -> list.get(0);
+                    case 2 -> list.get(0) + " or " + list.get(1);
+                    default -> list.subList(0, list.size() - 1).stream().collect(joining(", ")) + ", or " + list.get(list.size() - 1);
+                })
+                .map(BULLET_POINT::concat)
+                .collect(joining("%n", "%n", "%n"));
     }
 }

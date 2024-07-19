@@ -12,13 +12,13 @@
  */
 package io.openliberty.inspect.feature;
 
+import static java.util.Collections.unmodifiableMap;
+
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static java.util.Collections.unmodifiableMap;
 
 class ManifestValueEntry {
     private static final String TEXT = "([^\";\\\\]|\\\\.)+";

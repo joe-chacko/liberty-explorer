@@ -12,9 +12,10 @@
  */
 package io.openliberty.inspect.feature;
 
+import org.osgi.framework.VersionRange;
+
 import io.openliberty.inspect.Bundle;
 import io.openliberty.inspect.Element;
-import org.osgi.framework.VersionRange;
 
 public class BundleSpec implements ContentSpec {
     private final static VersionRange DEFAULT_RANGE = VersionRange.valueOf("0.0");

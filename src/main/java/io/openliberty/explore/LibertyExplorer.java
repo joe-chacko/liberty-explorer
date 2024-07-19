@@ -1,6 +1,6 @@
 /*
  * =============================================================================
- * Copyright (c) 2022 IBM Corporation and others.
+ * Copyright (c) 2022,2024 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v2.0
  * which accompanies this distribution, and is available at
@@ -13,18 +13,22 @@
 package io.openliberty.explore;
 
 
-import java.nio.file.Path;
-import java.util.Arrays;
+import static io.openliberty.GraphCollectors.toUnionWith;
+import static io.openliberty.explore.LibertyExplorer.Direction.FORWARD;
+import static io.openliberty.explore.LibertyExplorer.Direction.REVERSE;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.unmodifiableSet;
-import java.util.HashSet;
-import java.util.List;
 import static java.util.Objects.requireNonNull;
-import java.util.Set;
 import static java.util.function.Predicate.not;
-import java.util.stream.Collectors;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static java.util.stream.Collectors.toUnmodifiableSet;
+
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.jgrapht.Graph;
@@ -35,9 +39,6 @@ import org.jgrapht.graph.AsSubgraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.EdgeReversedGraph;
 
-import static io.openliberty.GraphCollectors.toUnionWith;
-import static io.openliberty.explore.LibertyExplorer.Direction.FORWARD;
-import static io.openliberty.explore.LibertyExplorer.Direction.REVERSE;
 import io.openliberty.inspect.Catalog;
 import io.openliberty.inspect.Element;
 import picocli.CommandLine;

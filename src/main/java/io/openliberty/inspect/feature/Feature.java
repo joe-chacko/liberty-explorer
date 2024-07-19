@@ -12,7 +12,14 @@
  */
 package io.openliberty.inspect.feature;
 
+import static io.openliberty.inspect.Visibility.PUBLIC;
 import static io.openliberty.inspect.Visibility.UNKNOWN;
+import static io.openliberty.inspect.feature.ManifestKey.IBM_PROVISION_CAPABILITY;
+import static io.openliberty.inspect.feature.ManifestKey.IBM_SHORTNAME;
+import static io.openliberty.inspect.feature.ManifestKey.SUBSYSTEM_CONTENT;
+import static io.openliberty.inspect.feature.ManifestKey.SUBSYSTEM_DESCRIPTION;
+import static io.openliberty.inspect.feature.ManifestKey.SUBSYSTEM_SYMBOLICNAME;
+import static io.openliberty.inspect.feature.ManifestKey.SUBSYSTEM_VERSION;
 import static java.util.stream.Collectors.toUnmodifiableList;
 
 import java.io.FileInputStream;
@@ -28,7 +35,8 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
-import java.util.stream.Collectors;
+import java.util.regex.MatchResult;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.osgi.framework.Version;
@@ -37,6 +45,7 @@ import io.openliberty.inspect.Element;
 import io.openliberty.inspect.Visibility;
 
 public final class Feature implements Element {
+    private static final Pattern LDAP_FEATURE_IDS = Pattern.compile("(?<=osgi.identity=)(.*?)(?=\\))");
     private final Path path;
     private final String fullName;
     private final String shortName;
@@ -46,6 +55,8 @@ public final class Feature implements Element {
     private final List<ContentSpec> contents;
     private final Manifest manifest;
     private final boolean isAutoFeature;
+    private final List<List<String>> autoFeatureDetails;
+
     private final String desc;
 
     public Feature(Path path) {
@@ -56,26 +67,41 @@ public final class Feature implements Element {
         } catch (IOException e) {
             throw new IOError(e);
         }
-        Optional<ManifestValueEntry> symbolicName = ManifestKey.SUBSYSTEM_SYMBOLICNAME.parseValues(attributes).findFirst();
+        Optional<ManifestValueEntry> symbolicName = SUBSYSTEM_SYMBOLICNAME.parseValues(attributes).findFirst();
         this.fullName = symbolicName.orElseThrow(Error::new).id;
-        this.shortName = ManifestKey.IBM_SHORTNAME.get(attributes).orElse(null);
+        this.shortName = IBM_SHORTNAME.get(attributes).orElse(null);
         this.visibility = symbolicName.map(Feature::getVisibility).orElse(UNKNOWN);
-        this.name = visibility == Visibility.PUBLIC ? shortName().orElse(fullName) : fullName;
-        this.contents = ManifestKey.SUBSYSTEM_CONTENT.parseValues(attributes)
+        this.name = visibility == PUBLIC ? shortName().orElse(fullName) : fullName;
+        this.contents = SUBSYSTEM_CONTENT.parseValues(attributes)
                 .map(Feature::createSpec)
                 .filter(Objects::nonNull)
                 .collect(toUnmodifiableList());
-        this.isAutoFeature = ManifestKey.IBM_PROVISION_CAPABILITY.isPresent(attributes);
-        this.version = ManifestKey.SUBSYSTEM_VERSION.get(attributes).map(Version::new).orElse(Version.emptyVersion);
+        this.isAutoFeature = IBM_PROVISION_CAPABILITY.isPresent(attributes);
+        this.autoFeatureDetails = IBM_PROVISION_CAPABILITY.parseValues(attributes)
+                .map(ve -> ve.getQualifier("filter"))
+                .map(this::parseFeaturesFromLdapExpression)
+                .toList();
+        this.version = SUBSYSTEM_VERSION.get(attributes).map(Version::new).orElse(Version.emptyVersion);
         try {
             this.manifest = new Manifest(path.toUri().toURL().openStream());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        this.desc = ManifestKey.SUBSYSTEM_DESCRIPTION.get(attributes)
+        this.desc = SUBSYSTEM_DESCRIPTION.get(attributes)
                 .map(this::resolveDescription)
                 .orElseGet(this::getPrivateFeatureDescription);
     }
+
+    private List<String> parseFeaturesFromLdapExpression(String ldapExpr) {
+        return LDAP_FEATURE_IDS.matcher(ldapExpr).results()
+                .map(MatchResult::group)
+                .toList();
+    }
+
+    public List<List<String>> getAutoFeatureDetails() {
+        return autoFeatureDetails;
+    }
+
 
     private static Visibility getVisibility(ManifestValueEntry symbolicName) {
         String vis = symbolicName.getQualifier("visibility").toUpperCase();

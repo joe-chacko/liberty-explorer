@@ -12,10 +12,10 @@
  */
 package io.openliberty.inspect.feature;
 
-import io.openliberty.inspect.Element;
-
 import java.util.Collection;
 import java.util.Optional;
+
+import io.openliberty.inspect.Element;
 
 public interface ContentSpec {
     default Optional<Element> findBestMatch(Collection<Element> elements) {
