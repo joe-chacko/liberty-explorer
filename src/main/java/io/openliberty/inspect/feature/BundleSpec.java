@@ -50,6 +50,6 @@ public class BundleSpec implements ContentSpec {
                 + (versionRange.getRightType() == VersionRange.RIGHT_CLOSED ?
                         " up to and including ":
                         " up to but not including ")
-                + versionRange.getRight() + versionRange.getRightType();
+                + versionRange.getRight();
     }
 }
