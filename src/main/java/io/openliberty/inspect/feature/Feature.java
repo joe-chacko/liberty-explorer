@@ -12,16 +12,6 @@
  */
 package io.openliberty.inspect.feature;
 
-import static io.openliberty.inspect.Visibility.PUBLIC;
-import static io.openliberty.inspect.Visibility.UNKNOWN;
-import static io.openliberty.inspect.feature.ManifestKey.IBM_PROVISION_CAPABILITY;
-import static io.openliberty.inspect.feature.ManifestKey.IBM_SHORTNAME;
-import static io.openliberty.inspect.feature.ManifestKey.SUBSYSTEM_CONTENT;
-import static io.openliberty.inspect.feature.ManifestKey.SUBSYSTEM_DESCRIPTION;
-import static io.openliberty.inspect.feature.ManifestKey.SUBSYSTEM_SYMBOLICNAME;
-import static io.openliberty.inspect.feature.ManifestKey.SUBSYSTEM_VERSION;
-import static java.util.stream.Collectors.toUnmodifiableList;
-
 import java.io.FileInputStream;
 import java.io.IOError;
 import java.io.IOException;
@@ -37,12 +27,21 @@ import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
+import static java.util.stream.Collectors.toUnmodifiableList;
 import java.util.stream.Stream;
 
 import org.osgi.framework.Version;
 
 import io.openliberty.inspect.Element;
 import io.openliberty.inspect.Visibility;
+import static io.openliberty.inspect.Visibility.PUBLIC;
+import static io.openliberty.inspect.Visibility.UNKNOWN;
+import static io.openliberty.inspect.feature.ManifestKey.IBM_PROVISION_CAPABILITY;
+import static io.openliberty.inspect.feature.ManifestKey.IBM_SHORTNAME;
+import static io.openliberty.inspect.feature.ManifestKey.SUBSYSTEM_CONTENT;
+import static io.openliberty.inspect.feature.ManifestKey.SUBSYSTEM_DESCRIPTION;
+import static io.openliberty.inspect.feature.ManifestKey.SUBSYSTEM_SYMBOLICNAME;
+import static io.openliberty.inspect.feature.ManifestKey.SUBSYSTEM_VERSION;
 
 public final class Feature implements Element {
     private static final Pattern LDAP_FEATURE_IDS = Pattern.compile("(?<=osgi.identity=)(.*?)(?=\\))");
@@ -104,10 +103,10 @@ public final class Feature implements Element {
 
 
     private static Visibility getVisibility(ManifestValueEntry symbolicName) {
-        String vis = symbolicName.getQualifier("visibility").toUpperCase();
         try {
+            String vis = symbolicName.getQualifier("visibility").toUpperCase();
             return Visibility.valueOf(vis);
-        } catch (IllegalArgumentException e) {
+        } catch (NullPointerException|IllegalArgumentException e) {
             return null;
         }
     }
@@ -223,8 +222,9 @@ public final class Feature implements Element {
 
     private String getPrivateFeatureDescription() {
         Attributes attributes = manifest.getMainAttributes();
-        String symbolicNameAttr = attributes.getValue("Subsystem-SymbolicName").substring(symbolicName().length() + 2);
-        if(isAutoFeature()) return "" + symbolicNameAttr + "\n" + attributes.getValue("IBM-Provision-Capability");
+        String val = attributes.getValue("Subsystem-SymbolicName");
+        String symbolicNameAttr =  (symbolicName().equals(val)) ? "" : val.substring(symbolicName().length() + 2);
+        if(isAutoFeature()) return Optional.of(symbolicNameAttr).filter(String::isBlank).map(s -> s+"\n").orElse("") + attributes.getValue("IBM-Provision-Capability");
         if(!symbolicNameAttr.isEmpty()) return symbolicNameAttr;
         return "";
     }
