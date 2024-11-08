@@ -14,6 +14,7 @@
 package io.openliberty.inspect;
 
 import io.openliberty.inspect.feature.Feature;
+
 import org.apache.commons.collections4.Bag;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.Trie;
@@ -36,6 +37,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Predicate;
@@ -66,7 +68,8 @@ public class Catalog {
         if (includeBundles) Stream.concat(Files.walk(devDir),Files.list(libDir))
                 .filter(Files::isRegularFile)
                 .filter(p -> p.toString().endsWith(".jar"))
-                .map(Bundle::new)
+                .map(Bundle::parse)
+                .filter(Objects::nonNull)
                 .forEach(this::initElement);
         Path featureDir = validate(libertyRoot.resolve("lib/features"), "No feature subdirectory found: ");
         Path platformDir = validate(libertyRoot.resolve("lib/platform"), "No platform subdirectory found: ");

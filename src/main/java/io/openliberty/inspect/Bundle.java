@@ -12,8 +12,6 @@
  */
 package io.openliberty.inspect;
 
-import org.osgi.framework.Version;
-
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.jar.Attributes;
@@ -24,8 +22,11 @@ import java.util.stream.Stream;
 import static org.osgi.framework.Constants.BUNDLE_NAME;
 import static org.osgi.framework.Constants.BUNDLE_SYMBOLICNAME;
 import static org.osgi.framework.Constants.BUNDLE_VERSION;
+import org.osgi.framework.Version;
 
 public final class Bundle implements Element {
+    private static class InvalidBundleException extends Exception {}
+
     private final Path path;
     private final JarFile jar;
     private final Manifest manifest;
@@ -34,7 +35,15 @@ public final class Bundle implements Element {
     private final String name;
     private final Version version;
 
-    Bundle(Path path) {
+    static Bundle parse(Path path) {
+        try {
+            return new Bundle(path);
+        } catch (InvalidBundleException e) {
+            return null;
+        }
+    }
+
+    Bundle(Path path) throws InvalidBundleException {
         this.path = path;
         try {
             this.jar = new JarFile(path.toFile());
@@ -44,7 +53,8 @@ public final class Bundle implements Element {
             this.name = attributes.getValue(BUNDLE_NAME);
             this.version = Version.parseVersion(attributes.getValue(BUNDLE_VERSION));
         } catch (Exception e) {
-            throw new Error(e);
+            // probably just a jar since it doesn't have bundle metadata
+            throw new InvalidBundleException();
         }
     }
 
