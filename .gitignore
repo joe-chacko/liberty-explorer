@@ -1,1 +1,41 @@
+# Build outputs
+/build/
+/bin/
+*.war
+*.jar
 
+# Gradle
+.gradle/
+gradle-app.setting
+gradle/
+gradlew
+gradlew.bat
+
+# IDE
+.classpath
+.project
+.settings/
+.metadata/
+*.iml
+.idea/
+
+# Node/Frontend
+node_modules/
+/src/main/webapp/frontend/dist/
+/src/main/webapp/frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Liberty
+/wlp/
+/target/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Made with Bob
