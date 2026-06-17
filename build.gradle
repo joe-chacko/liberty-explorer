@@ -1,0 +1,137 @@
+/*
+ * Copyright (c) 2026 IBM Corporation.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License 2.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-2.0/
+ * 
+ * SPDX-License-Identifier: EPL-2.0
+ */
+
+plugins {
+    id 'war'
+    id 'io.openliberty.tools.gradle.Liberty' version '3.8'
+}
+
+group = 'io.openliberty.tools'
+version = '1.0.0-SNAPSHOT'
+
+sourceCompatibility = '17'
+targetCompatibility = '17'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Jakarta EE 10
+    providedCompile 'jakarta.platform:jakarta.jakartaee-api:10.0.0'
+    
+    // JAX-RS for REST API
+    providedCompile 'jakarta.ws.rs:jakarta.ws.rs-api:3.1.0'
+    
+    // CDI for dependency injection
+    providedCompile 'jakarta.enterprise:jakarta.enterprise.cdi-api:4.0.1'
+    
+    // JSON-B for JSON processing
+    providedCompile 'jakarta.json.bind:jakarta.json.bind-api:3.0.0'
+    
+    // Servlet API
+    providedCompile 'jakarta.servlet:jakarta.servlet-api:6.0.0'
+    
+    // Graph library (from CLI tool)
+    implementation 'org.jgrapht:jgrapht-core:1.5.1'
+    implementation 'org.jgrapht:jgrapht-io:1.5.1'
+    
+    // OSGi APIs
+    implementation 'org.osgi:osgi.core:8.0.0'
+    
+    // Apache Commons for collections
+    implementation 'org.apache.commons:commons-collections4:4.4'
+    
+    // JAXB for XML parsing
+    implementation 'jakarta.xml.bind:jakarta.xml.bind-api:4.0.0'
+    implementation 'org.glassfish.jaxb:jaxb-runtime:4.0.2'
+    
+    // Logging
+    implementation 'org.slf4j:slf4j-api:2.0.7'
+    
+    // Testing
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.9.3'
+    testImplementation 'org.mockito:mockito-core:5.3.1'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.3.1'
+}
+
+// Install frontend dependencies
+task installFrontend(type: Exec) {
+    workingDir 'src/main/webapp/frontend'
+    commandLine 'npm', 'install'
+    
+    // Only run if frontend directory exists and node_modules doesn't
+    onlyIf {
+        file('src/main/webapp/frontend/package.json').exists() &&
+        !file('src/main/webapp/frontend/node_modules').exists()
+    }
+}
+
+// Frontend build task
+task buildFrontend(type: Exec) {
+    dependsOn installFrontend
+    workingDir 'src/main/webapp/frontend'
+    commandLine 'npm', 'run', 'build'
+    
+    // Only run if frontend directory exists
+    onlyIf {
+        file('src/main/webapp/frontend/package.json').exists()
+    }
+}
+
+// Ensure frontend is built before WAR
+war {
+    dependsOn buildFrontend
+    
+    archiveBaseName = 'liberty-explorer'
+    archiveVersion = ''
+    
+    // Include frontend build output
+    from('src/main/webapp/frontend/dist') {
+        into 'static'
+    }
+}
+
+// Liberty configuration
+liberty {
+    server {
+        name = 'libertyExplorerServer'
+        
+        features {
+            acceptLicense = true
+        }
+        
+        // Deploy as configured application, not loose or dropins
+        looseApplication = false
+        deploy {
+            apps = [war]
+        }
+    }
+}
+
+// Test configuration
+test {
+    useJUnitPlatform()
+}
+
+// Task to copy CLI tool classes for reference
+task copyCliReference(type: Copy) {
+    from '../lx-main-ref/src/main/java'
+    into 'src/main/java-reference'
+    include 'io/openliberty/inspect/**'
+    include 'io/openliberty/GraphCollectors.java'
+}
+
+// Clean task
+clean {
+    delete 'src/main/webapp/frontend/dist'
+    delete 'src/main/webapp/frontend/node_modules'
+    delete '.gradle'
+}

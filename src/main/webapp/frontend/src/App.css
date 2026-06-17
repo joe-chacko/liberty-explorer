@@ -1,0 +1,195 @@
+/*
+ * Copyright (c) 2026 IBM Corporation.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License 2.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
+
+/* Content Layout */
+.liberty-explorer-content {
+  background: var(--cds-background);
+}
+
+.liberty-explorer-grid {
+  padding-top: var(--cds-spacing-07);
+  padding-bottom: var(--cds-spacing-09);
+}
+
+/* Page Header */
+.page-header {
+  margin-bottom: var(--cds-spacing-09);
+}
+
+.page-header__icon {
+  color: var(--cds-icon-primary);
+  margin-bottom: var(--cds-spacing-05);
+}
+
+.page-header__title {
+  font-size: var(--cds-productive-heading-05-font-size);
+  font-weight: var(--cds-productive-heading-05-font-weight);
+  line-height: var(--cds-productive-heading-05-line-height);
+  letter-spacing: var(--cds-productive-heading-05-letter-spacing);
+  margin-bottom: var(--cds-spacing-05);
+  color: var(--cds-text-primary);
+}
+
+.page-header__description {
+  font-size: var(--cds-body-long-02-font-size);
+  font-weight: var(--cds-body-long-02-font-weight);
+  line-height: var(--cds-body-long-02-line-height);
+  letter-spacing: var(--cds-body-long-02-letter-spacing);
+  color: var(--cds-text-secondary);
+  max-width: 40rem;
+}
+
+/* Section Titles */
+.section-title {
+  font-size: var(--cds-productive-heading-03-font-size);
+  font-weight: var(--cds-productive-heading-03-font-weight);
+  line-height: var(--cds-productive-heading-03-line-height);
+  letter-spacing: var(--cds-productive-heading-03-letter-spacing);
+  margin-bottom: var(--cds-spacing-06);
+  color: var(--cds-text-primary);
+}
+
+/* Features Column */
+.features-column {
+  margin-bottom: var(--cds-spacing-07);
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  padding: var(--cds-spacing-09) 0;
+}
+
+.features-list {
+  margin-top: var(--cds-spacing-05);
+}
+
+/* Feature Tiles */
+.feature-tile {
+  transition: all 110ms cubic-bezier(0.2, 0, 0.38, 0.9);
+  border: 1px solid var(--cds-border-subtle-01);
+}
+
+.feature-tile:hover {
+  background: var(--cds-layer-hover);
+  border-color: var(--cds-border-subtle-02);
+}
+
+.feature-tile:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.feature-tile.selected {
+  border: 2px solid var(--cds-border-interactive);
+  background: var(--cds-layer-selected);
+  outline: none;
+}
+
+.feature-tile__header {
+  margin-bottom: var(--cds-spacing-03);
+}
+
+.feature-tile__name {
+  font-size: var(--cds-heading-compact-01-font-size);
+  font-weight: var(--cds-heading-compact-01-font-weight);
+  line-height: var(--cds-heading-compact-01-line-height);
+  letter-spacing: var(--cds-heading-compact-01-letter-spacing);
+  color: var(--cds-text-primary);
+  margin: 0;
+}
+
+.feature-tile__symbolic-name {
+  font-size: var(--cds-label-01-font-size);
+  font-weight: var(--cds-label-01-font-weight);
+  line-height: var(--cds-label-01-line-height);
+  letter-spacing: var(--cds-label-01-letter-spacing);
+  color: var(--cds-text-secondary);
+  margin: 0 0 var(--cds-spacing-04) 0;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.feature-tile__tags {
+  display: flex;
+  gap: var(--cds-spacing-03);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Details Column */
+.details-column {
+  margin-bottom: var(--cds-spacing-07);
+}
+
+.details-tile {
+  padding: var(--cds-spacing-06);
+}
+
+.details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--cds-spacing-05);
+  flex-wrap: wrap;
+}
+
+.details-title {
+  font-size: var(--cds-productive-heading-04-font-size);
+  font-weight: var(--cds-productive-heading-04-font-weight);
+  line-height: var(--cds-productive-heading-04-line-height);
+  letter-spacing: var(--cds-productive-heading-04-letter-spacing);
+  color: var(--cds-text-primary);
+  margin: 0;
+  flex: 1;
+}
+
+.details-tags {
+  display: flex;
+  gap: var(--cds-spacing-03);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.details-list {
+  margin-top: var(--cds-spacing-05);
+}
+
+.dependencies-list {
+  margin: 0;
+  padding-left: var(--cds-spacing-06);
+  list-style-type: disc;
+}
+
+.dependencies-list li {
+  font-size: var(--cds-body-short-01-font-size);
+  font-weight: var(--cds-body-short-01-font-weight);
+  line-height: var(--cds-body-short-01-line-height);
+  letter-spacing: var(--cds-body-short-01-letter-spacing);
+  color: var(--cds-text-primary);
+  font-family: 'IBM Plex Mono', monospace;
+  margin-bottom: var(--cds-spacing-02);
+}
+
+.dependencies-list li:last-child {
+  margin-bottom: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 671px) {
+  .page-header__title {
+    font-size: var(--cds-productive-heading-04-font-size);
+  }
+  
+  .details-header {
+    flex-direction: column;
+  }
+}
+
+/* Made with Bob */
