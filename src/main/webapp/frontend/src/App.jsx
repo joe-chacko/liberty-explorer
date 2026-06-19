@@ -36,10 +36,10 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const [visibilityFilters, setVisibilityFilters] = useState({
     PUBLIC: true,
-    PROTECTED: true,
-    PRIVATE: true,
+    PROTECTED: false,
+    PRIVATE: false,
   })
-  const [showAutoFeatures, setShowAutoFeatures] = useState(true)
+  const [showAutoFeatures, setShowAutoFeatures] = useState(false)
 
   useEffect(() => {
     fetchFeatures()
@@ -151,31 +151,28 @@ function App() {
                   />
                   
                   <div className="feature-filters">
-                    <CheckboxGroup legendText="Visibility">
+                    <CheckboxGroup legendText="features:" orientation="horizontal">
                       <Checkbox
                         id="filter-public"
-                        labelText="Public"
+                        labelText="public"
                         checked={visibilityFilters.PUBLIC}
                         onChange={() => handleVisibilityChange('PUBLIC')}
                       />
                       <Checkbox
                         id="filter-protected"
-                        labelText="Protected"
+                        labelText="protected"
                         checked={visibilityFilters.PROTECTED}
                         onChange={() => handleVisibilityChange('PROTECTED')}
                       />
                       <Checkbox
                         id="filter-private"
-                        labelText="Private"
+                        labelText="private"
                         checked={visibilityFilters.PRIVATE}
                         onChange={() => handleVisibilityChange('PRIVATE')}
                       />
-                    </CheckboxGroup>
-                    
-                    <CheckboxGroup legendText="Feature Type">
                       <Checkbox
                         id="filter-auto"
-                        labelText="Auto-features"
+                        labelText="auto"
                         checked={showAutoFeatures}
                         onChange={() => setShowAutoFeatures(!showAutoFeatures)}
                       />
