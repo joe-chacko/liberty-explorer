@@ -16,6 +16,11 @@ plugins {
 group = 'io.openliberty.tools'
 version = '1.0.0-SNAPSHOT'
 
+ext {
+    libertyRuntimeVersion = '26.0.0.6'
+    libertyPluginVersionUnderTest = '3.8'
+}
+
 sourceCompatibility = '17'
 targetCompatibility = '17'
 
@@ -62,6 +67,14 @@ dependencies {
     testImplementation 'org.mockito:mockito-junit-jupiter:5.3.1'
 }
 
+configurations {
+    libertyRuntimeZip
+}
+
+dependencies {
+    libertyRuntimeZip "io.openliberty:openliberty-kernel:${libertyRuntimeVersion}@zip"
+}
+
 // Install frontend dependencies
 task installFrontend(type: Exec) {
     workingDir 'src/main/webapp/frontend'
@@ -103,11 +116,13 @@ war {
 liberty {
     server {
         name = 'libertyExplorerServer'
-        
+
+        version = libertyRuntimeVersion
+
         features {
             acceptLicense = true
         }
-        
+
         // Deploy as configured application, not loose or dropins
         looseApplication = false
         deploy {
@@ -118,7 +133,12 @@ liberty {
 
 // Test configuration
 test {
+    dependsOn installFeature
     useJUnitPlatform()
+    systemProperty 'test.liberty.runtime.dir', file("${buildDir}/wlp").absolutePath
+    systemProperty 'test.liberty.server.config.dir', file('src/main/liberty/config').absolutePath
+    systemProperty 'test.liberty.runtime.version', libertyRuntimeVersion
+    systemProperty 'test.liberty.gradle.plugin.version', libertyPluginVersionUnderTest
 }
 
 // Task to copy CLI tool classes for reference

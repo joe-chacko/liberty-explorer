@@ -169,32 +169,47 @@ Minimal `server.xml` for dropins deployment:
 </server>
 ```
 
-## MVP Implementation Status
+## Implementation Status
 
-✅ **MVP Complete** - Basic functionality working:
+### ✅ Stage 1: Real Liberty Runtime Scanning (COMPLETE)
 
-- [x] Project structure and Gradle build
-- [x] Architecture documentation
-- [x] Data model implementation (Element, FeatureInfo, BundleInfo)
-- [x] REST API layer (GET /api/features, GET /api/features/{name})
-- [x] Frontend React application with feature list and detail view
-- [x] Welcome page with navigation
-- [x] Automated build and deployment
+**Stage 1 replaces mock data with real Liberty installation scanning:**
+
+- [x] LibertyRuntimeScanner - Scans Liberty runtime directories for features and bundles
+- [x] LibertyModelService - Application-scoped CDI service managing the scanned model
+- [x] FeatureResource - Updated to use real data instead of mock data
+- [x] Configuration support - Bootstrap properties for runtime path detection
+- [x] Comprehensive tests - All scanner tests passing
+
+**Key Features:**
+- Scans Liberty runtime at startup (automatic detection or configurable path)
+- Parses feature manifests (.mf files) from lib/platform and lib/features
+- Extracts feature metadata: symbolic name, short name, version, visibility, dependencies
+- Detects auto-features and their trigger conditions
+- Scans bundles from lib/ and dev/ directories
+- Filters features based on server.xml configuration (optional)
+- Builds dependency relationships between features
+
+**Configuration:**
+- Automatic detection: Uses `wlp.install.dir` system property when running on Liberty
+- Manual configuration: Set `liberty.runtime.dir` in bootstrap.properties
+- Server filtering: Set `liberty.server.config.dir` to filter by configured features
 
 ### Current Features
 
-- **Backend**: JAX-RS REST API with mock data for 4 Liberty features
+- **Backend**: JAX-RS REST API with real Liberty runtime data
 - **Frontend**: React 18 with Vite, displays feature list and details
 - **Deployment**: Automated Gradle build with Liberty integration
+- **Data Model**: Complete feature and bundle scanning with relationships
 
-### Next Steps
+### Next Steps (Stage 2+)
 
-- [ ] Connect to real Liberty installation data
 - [ ] Graph visualization with Cytoscape.js
 - [ ] Search functionality
-- [ ] Bundle explorer
+- [ ] Bundle content exploration (packages, classes)
 - [ ] DS component viewer
 - [ ] Configuration metadata browser
+- [ ] Auto-feature trigger visualization
 
 ## License
 

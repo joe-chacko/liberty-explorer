@@ -17,9 +17,23 @@
         <feature>servlet-6.0</feature>
     </featureManager>
 
-    <logging traceSpecification="*=info"
+    <!-- HTTP endpoint configuration -->
+    <httpEndpoint id="defaultHttpEndpoint"
+                  httpPort="9080"
+                  httpsPort="9443" />
+
+    <!-- Application configuration -->
+    <webApplication id="liberty-explorer"
+                    location="liberty-explorer.war"
+                    contextRoot="/liberty-explorer">
+        <classloader delegation="parentLast"/>
+    </webApplication>
+
+    <!-- Logging configuration -->
+    <logging traceSpecification="*=info:io.openliberty.tools.explorer.*=fine"
              maxFileSize="20"
-             maxFiles="10"/>
+             maxFiles="10"
+             consoleLogLevel="INFO"/>
 
 </server>
 

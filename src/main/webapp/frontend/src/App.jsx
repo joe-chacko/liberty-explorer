@@ -38,7 +38,9 @@ function App() {
   const fetchFeatures = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/features')
+      // Use relative path that works both in dev (with proxy) and production (deployed WAR)
+      const apiUrl = import.meta.env.DEV ? '/api/features' : '../api/features'
+      const response = await fetch(apiUrl)
       if (!response.ok) {
         throw new Error('Failed to fetch features')
       }
