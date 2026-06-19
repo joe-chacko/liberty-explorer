@@ -21,6 +21,9 @@ import {
   StructuredListCell,
   Stack,
   Section,
+  Search,
+  Checkbox,
+  CheckboxGroup,
 } from '@carbon/react'
 import { Rocket, Information } from '@carbon/icons-react'
 import './App.css'
@@ -30,6 +33,13 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedFeature, setSelectedFeature] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [visibilityFilters, setVisibilityFilters] = useState({
+    PUBLIC: true,
+    PROTECTED: true,
+    PRIVATE: true,
+  })
+  const [showAutoFeatures, setShowAutoFeatures] = useState(true)
 
   useEffect(() => {
     fetchFeatures()
@@ -57,6 +67,44 @@ function App() {
   const handleFeatureClick = (feature) => {
     setSelectedFeature(feature)
   }
+
+  const handleVisibilityChange = (visibility) => {
+    setVisibilityFilters((prev) => ({
+      ...prev,
+      [visibility]: !prev[visibility],
+    }))
+  }
+
+  // Check if a feature is an auto-feature (typically has "auto" in symbolic name)
+  const isAutoFeature = (feature) => {
+    return feature.symbolicName.toLowerCase().includes('auto')
+  }
+
+  // Filter features based on search term, visibility, and auto-feature status
+  const filteredFeatures = features.filter((feature) => {
+    // Search filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase()
+      const matchesSearch = (
+        feature.name.toLowerCase().includes(searchLower) ||
+        feature.symbolicName.toLowerCase().includes(searchLower) ||
+        (feature.description && feature.description.toLowerCase().includes(searchLower))
+      )
+      if (!matchesSearch) return false
+    }
+
+    // Visibility filter
+    if (feature.visibility && !visibilityFilters[feature.visibility]) {
+      return false
+    }
+
+    // Auto-feature filter
+    if (isAutoFeature(feature) && !showAutoFeatures) {
+      return false
+    }
+
+    return true
+  })
 
   return (
     <Theme theme="g10">
@@ -89,6 +137,53 @@ function App() {
             <Section level={2}>
               <h2 className="section-title">Features</h2>
               
+              {!loading && !error && (
+                <>
+                  <Search
+                    size="lg"
+                    placeholder="Search features..."
+                    labelText="Search features"
+                    closeButtonLabelText="Clear search"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onClear={() => setSearchTerm('')}
+                    className="feature-search"
+                  />
+                  
+                  <div className="feature-filters">
+                    <CheckboxGroup legendText="Visibility">
+                      <Checkbox
+                        id="filter-public"
+                        labelText="Public"
+                        checked={visibilityFilters.PUBLIC}
+                        onChange={() => handleVisibilityChange('PUBLIC')}
+                      />
+                      <Checkbox
+                        id="filter-protected"
+                        labelText="Protected"
+                        checked={visibilityFilters.PROTECTED}
+                        onChange={() => handleVisibilityChange('PROTECTED')}
+                      />
+                      <Checkbox
+                        id="filter-private"
+                        labelText="Private"
+                        checked={visibilityFilters.PRIVATE}
+                        onChange={() => handleVisibilityChange('PRIVATE')}
+                      />
+                    </CheckboxGroup>
+                    
+                    <CheckboxGroup legendText="Feature Type">
+                      <Checkbox
+                        id="filter-auto"
+                        labelText="Auto-features"
+                        checked={showAutoFeatures}
+                        onChange={() => setShowAutoFeatures(!showAutoFeatures)}
+                      />
+                    </CheckboxGroup>
+                  </div>
+                </>
+              )}
+              
               {loading && (
                 <div className="loading-container">
                   <Loading description="Loading features..." withOverlay={false} />
@@ -111,35 +206,43 @@ function App() {
               )}
               
               {!loading && !error && (
-                <Stack gap={5} className="features-list">
-                  {features.map((feature) => (
-                    <ClickableTile
-                      key={feature.symbolicName}
-                      onClick={() => handleFeatureClick(feature)}
-                      className={`feature-tile ${
-                        selectedFeature?.symbolicName === feature.symbolicName ? 'selected' : ''
-                      }`}
-                    >
-                      <div className="feature-tile__header">
-                        <h4 className="feature-tile__name">{feature.name}</h4>
-                      </div>
-                      <p className="feature-tile__symbolic-name">
-                        {feature.symbolicName}
-                      </p>
-                      <div className="feature-tile__tags">
-                        <Tag type="blue" size="sm">v{feature.version}</Tag>
-                        {feature.visibility && (
-                          <Tag
-                            type={feature.visibility === 'PUBLIC' ? 'green' : 'gray'}
-                            size="sm"
-                          >
-                            {feature.visibility}
-                          </Tag>
-                        )}
-                      </div>
-                    </ClickableTile>
-                  ))}
-                </Stack>
+                <>
+                  {filteredFeatures.length === 0 ? (
+                    <div className="no-results">
+                      <p>No features found matching "{searchTerm}"</p>
+                    </div>
+                  ) : (
+                    <Stack gap={3} className="features-list">
+                      {filteredFeatures.map((feature) => (
+                        <ClickableTile
+                          key={feature.symbolicName}
+                          onClick={() => handleFeatureClick(feature)}
+                          className={`feature-tile ${
+                            selectedFeature?.symbolicName === feature.symbolicName ? 'selected' : ''
+                          }`}
+                        >
+                          <div className="feature-tile__content">
+                            <h4 className="feature-tile__name">{feature.name}</h4>
+                            <p className="feature-tile__symbolic-name">
+                              {feature.symbolicName}
+                            </p>
+                            <div className="feature-tile__tags">
+                              <Tag type="blue" size="sm">v{feature.version}</Tag>
+                              {feature.visibility && (
+                                <Tag
+                                  type={feature.visibility === 'PUBLIC' ? 'green' : 'gray'}
+                                  size="sm"
+                                >
+                                  {feature.visibility}
+                                </Tag>
+                              )}
+                            </div>
+                          </div>
+                        </ClickableTile>
+                      ))}
+                    </Stack>
+                  )}
+                </>
               )}
             </Section>
           </Column>
